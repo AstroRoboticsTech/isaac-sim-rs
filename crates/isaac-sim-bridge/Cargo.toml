@@ -1,0 +1,16 @@
+[package]
+name = "isaac-sim-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Rust cdylib loaded by the omni.isaacsimrs.bridge Carb extension into the Isaac Sim host process"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+log = { workspace = true }
+env_logger = "0.11"

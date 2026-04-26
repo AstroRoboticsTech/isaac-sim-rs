@@ -1,6 +1,8 @@
 #define CARB_EXPORTS
 #include <carb/PluginUtils.h>
 #include <carb/logging/Log.h>
+#include <dlfcn.h>
+#include <cstdlib>
 
 namespace isaacsimrs
 {
@@ -24,6 +26,24 @@ CARB_PLUGIN_IMPL_NO_DEPS()
 void fillInterface(isaacsimrs::IBridge& iface)
 {
     (void)iface;
+}
+
+namespace
+{
+struct RustCdylibLoader
+{
+    RustCdylibLoader()
+    {
+        const char* path = std::getenv("ISAAC_SIM_RS_CDYLIB");
+        if (!path) { return; }
+        void* handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        if (!handle) { return; }
+        auto init_fn = reinterpret_cast<void (*)()>(dlsym(handle, "isaac_sim_rs_init"));
+        if (init_fn) { init_fn(); }
+    }
+};
+
+static RustCdylibLoader g_loader;
 }
 
 void carbOnPluginStartup()

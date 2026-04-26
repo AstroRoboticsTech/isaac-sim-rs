@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/carb-sys",
+    "crates/isaac-sim-bridge",
 ]
 
 [workspace.package]

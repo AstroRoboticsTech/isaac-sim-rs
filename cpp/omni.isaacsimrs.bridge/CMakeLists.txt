@@ -24,3 +24,5 @@ set_target_properties(omni_isaacsimrs_bridge PROPERTIES
 target_include_directories(omni_isaacsimrs_bridge PRIVATE
     "${ISAAC_SIM}/kit/dev/include"
 )
+
+target_link_libraries(omni_isaacsimrs_bridge PRIVATE dl)

@@ -1,6 +1,9 @@
+mod consumers;
 mod demo;
 mod lidar;
 mod lifecycle;
+
+pub use consumers::{lidar_consumer_count, register_lidar_consumer};
 
 #[cxx::bridge(namespace = "isaacsimrs")]
 mod ffi {
@@ -22,6 +25,8 @@ mod ffi {
         fn forward_lidar_scan(scan: &[f32], intensities: &[u8], meta: &ScanMeta);
     }
 }
+
+pub use ffi::ScanMeta;
 
 use demo::double_value;
 use lidar::forward_lidar_scan;

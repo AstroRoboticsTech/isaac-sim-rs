@@ -9,7 +9,7 @@ description = "Rust cdylib loaded by the omni.isaacsimrs.bridge Carb extension i
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 log = { workspace = true }

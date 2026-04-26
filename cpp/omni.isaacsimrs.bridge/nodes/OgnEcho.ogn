@@ -1,0 +1,13 @@
+{
+    "Echo": {
+        "version": 1,
+        "language": "C++",
+        "description": "Trivial echo node — doubles the input integer. Used to verify the OG codegen pipeline.",
+        "inputs": {
+            "value": {"type": "int", "description": "input integer", "default": 0}
+        },
+        "outputs": {
+            "doubled": {"type": "int", "description": "value * 2"}
+        }
+    }
+}

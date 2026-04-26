@@ -10,8 +10,30 @@ if(NOT DEFINED ENV{ISAAC_SIM_PATH})
 endif()
 set(ISAAC_SIM "$ENV{ISAAC_SIM_PATH}")
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(Ogn)
+include(Packman)
+
+packman_pull_usd(USD_ROOT)
+
+file(GLOB OGN_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/nodes/*.ogn")
+set(OGN_GENERATED_HEADERS "")
+foreach(ogn_file ${OGN_FILES})
+    add_ogn_node(
+        OGN_FILE "${ogn_file}"
+        EXTENSION "omni.isaacsimrs.bridge"
+    )
+    get_filename_component(node_name ${ogn_file} NAME_WE)
+    list(APPEND OGN_GENERATED_HEADERS "${${node_name}_DATABASE_H}")
+endforeach()
+
+file(GLOB_RECURSE PLUGIN_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/plugins/*.cpp")
+file(GLOB_RECURSE NODE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/nodes/*.cpp")
+
 add_library(omni_isaacsimrs_bridge SHARED
-    plugins/PluginInterface.cpp
+    ${PLUGIN_SOURCES}
+    ${NODE_SOURCES}
+    ${OGN_GENERATED_HEADERS}
 )
 
 set_target_properties(omni_isaacsimrs_bridge PROPERTIES
@@ -23,6 +45,12 @@ set_target_properties(omni_isaacsimrs_bridge PROPERTIES
 
 target_include_directories(omni_isaacsimrs_bridge PRIVATE
     "${ISAAC_SIM}/kit/dev/include"
+    "${ISAAC_SIM}/kit/dev/fabric/include"
+    "${ISAAC_SIM}/kit/dev/gsl/include"
+    "${USD_ROOT}/include"
+    "${OGN_GEN_DIR}"
 )
+
+target_link_directories(omni_isaacsimrs_bridge PRIVATE "${USD_ROOT}/lib")
 
 target_link_libraries(omni_isaacsimrs_bridge PRIVATE dl)

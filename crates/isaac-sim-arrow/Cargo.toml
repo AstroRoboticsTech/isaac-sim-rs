@@ -9,5 +9,5 @@ description = "Apache Arrow conversion utilities for Isaac Sim sensor data. Cons
 publish = false
 
 [dependencies]
-arrow = "55"
+arrow = { workspace = true }
 log = { workspace = true }

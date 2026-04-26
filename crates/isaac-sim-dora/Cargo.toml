@@ -1,0 +1,17 @@
+[package]
+name = "isaac-sim-dora"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "dora-rs adapter for the isaac-sim-rs SDK. Publishes any sensor stream from the bridge onto a dora node output as Apache Arrow record batches. LiDAR is the first sensor module; camera, IMU, articulation feedback, and others follow as the bridge exposes them."
+publish = false
+
+[dependencies]
+isaac-sim-bridge = { path = "../isaac-sim-bridge" }
+isaac-sim-arrow = { path = "../isaac-sim-arrow" }
+dora-node-api = { version = "0.5", features = ["tracing"] }
+arrow = { workspace = true }
+eyre = "0.6"
+log = { workspace = true }

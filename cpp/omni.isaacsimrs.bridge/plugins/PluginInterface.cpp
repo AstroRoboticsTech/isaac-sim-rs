@@ -28,24 +28,30 @@ DECLARE_OGN_NODES()
 void fillInterface(isaacsimrs::IBridge& iface)
 {
     (void)iface;
+    INITIALIZE_OGN_NODES();
 }
 
 namespace
 {
-struct RustCdylibLoader
+struct EagerInit
 {
-    RustCdylibLoader()
+    EagerInit()
     {
-        const char* path = std::getenv("ISAAC_SIM_RS_CDYLIB");
-        if (!path) { return; }
-        void* handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
-        if (!handle) { return; }
-        auto init_fn = reinterpret_cast<void (*)()>(dlsym(handle, "isaac_sim_rs_init"));
-        if (init_fn) { init_fn(); }
+        if (const char* path = std::getenv("ISAAC_SIM_RS_CDYLIB"))
+        {
+            if (void* handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL))
+            {
+                if (auto init_fn = reinterpret_cast<void (*)()>(dlsym(handle, "isaac_sim_rs_init")))
+                {
+                    init_fn();
+                }
+            }
+        }
+        INITIALIZE_OGN_NODES();
     }
 };
 
-static RustCdylibLoader g_loader;
+static EagerInit g_eager_init;
 }
 
 void carbOnPluginStartup()

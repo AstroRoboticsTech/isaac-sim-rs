@@ -1,0 +1,12 @@
+[package]
+title = "Isaac Sim Rust Bridge"
+description = "Rust FFI host extension. Loads a Rust cdylib and exposes Carb-routed sensor and actuator pipelines to dora-rs and other downstream consumers."
+version = "5.1.0-alpha.0"
+category = "Internal"
+authors = ["Astro Robotics"]
+repository = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+keywords = ["isaac", "rust", "ffi", "robotics"]
+
+[[native.plugin]]
+path = "bin/*.plugin"
+recursive = false

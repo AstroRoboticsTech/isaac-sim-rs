@@ -22,6 +22,11 @@ fn main() {
         .clang_arg("-x")
         .clang_arg("c++")
         .clang_arg("-std=c++17")
+        .allowlist_item("carb.*")
+        .allowlist_item("Carb.*")
+        .allowlist_item("CARB_.*")
+        .opaque_type("std::.*")
+        .layout_tests(false)
         .generate()
         .expect("bindgen failed to generate Carb bindings");
 

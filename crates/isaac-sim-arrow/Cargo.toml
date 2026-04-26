@@ -1,0 +1,13 @@
+[package]
+name = "isaac-sim-arrow"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Apache Arrow conversion utilities for Isaac Sim sensor data. Consumer-agnostic: any downstream (dora, rerun, file logger, custom bus) can take the resulting RecordBatch."
+publish = false
+
+[dependencies]
+arrow = "55"
+log = { workspace = true }

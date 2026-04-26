@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/carb-sys",
+    "crates/isaac-sim-arrow",
     "crates/isaac-sim-bridge",
 ]
 

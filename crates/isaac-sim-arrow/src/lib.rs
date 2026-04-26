@@ -4,3 +4,4 @@
 //! can take the resulting `RecordBatch`. One sub-module per sensor + annotator.
 
 pub mod lidar_flatscan;
+pub mod lidar_pointcloud;

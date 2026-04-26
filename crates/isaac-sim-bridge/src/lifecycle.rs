@@ -1,6 +1,6 @@
 use std::sync::Once;
 
-use crate::consumers::register_lidar_flatscan_consumer;
+use crate::consumers::{register_lidar_flatscan_consumer, register_lidar_pointcloud_consumer};
 
 static INIT: Once = Once::new();
 
@@ -25,6 +25,20 @@ fn register_default_consumers() {
             meta.rotation_rate,
             depth_min,
             depth_max
+        );
+    });
+
+    register_lidar_pointcloud_consumer(|az, _el, dist, intens, meta| {
+        let dmin = dist.iter().copied().fold(f32::INFINITY, f32::min);
+        let dmax = dist.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        log::info!(
+            "[isaac-sim-rs:default] lidar_pointcloud n={} az_n={} dist_n={} intens_n={} observed_dist=[{:.3},{:.3}]m",
+            meta.num_points,
+            az.len(),
+            dist.len(),
+            intens.len(),
+            dmin,
+            dmax
         );
     });
 }

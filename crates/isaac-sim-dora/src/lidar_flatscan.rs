@@ -6,8 +6,10 @@ use dora_node_api::{DoraNode, MetadataParameters};
 use isaac_sim_arrow::lidar_flatscan::{to_record_batch, LidarFlatScan};
 use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScanMeta};
 
-pub fn register_dora_lidar_flatscan_publisher(node: DoraNode, output_id: impl Into<String>) {
-    let node = Arc::new(Mutex::new(node));
+pub fn register_dora_lidar_flatscan_publisher(
+    node: Arc<Mutex<DoraNode>>,
+    output_id: impl Into<String>,
+) {
     let output: DataId = output_id.into().into();
 
     register_lidar_flatscan_consumer(move |scan, intensities, meta| {

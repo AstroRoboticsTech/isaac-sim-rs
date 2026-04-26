@@ -41,11 +41,18 @@ file(GLOB_RECURSE PLUGIN_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/
 file(GLOB_RECURSE NODE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/nodes/*.cpp")
 file(GLOB_RECURSE CXX_BRIDGE_SHIMS CONFIGURE_DEPENDS "${CARGO_TARGET_DIR}/cxxbridge/*/src/*.cc")
 
+file(GLOB CXX_RUNTIME_CC "$ENV{HOME}/.cargo/registry/src/*/cxx-*/src/cxx.cc")
+if(NOT CXX_RUNTIME_CC)
+    message(FATAL_ERROR "Could not find cxx.cc in cargo registry; ensure the cxx crate has been built (cargo build -p isaac-sim-bridge)")
+endif()
+list(GET CXX_RUNTIME_CC 0 CXX_RUNTIME_CC)
+
 add_library(omni_isaacsimrs_bridge SHARED
     ${PLUGIN_SOURCES}
     ${NODE_SOURCES}
     ${OGN_GENERATED_HEADERS}
     ${CXX_BRIDGE_SHIMS}
+    "${CXX_RUNTIME_CC}"
 )
 
 set_target_properties(omni_isaacsimrs_bridge PROPERTIES

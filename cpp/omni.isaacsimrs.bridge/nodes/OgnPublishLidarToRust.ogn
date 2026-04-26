@@ -1,0 +1,26 @@
+{
+    "PublishLidarToRust": {
+        "version": 1,
+        "language": "C++",
+        "description": "Forwards a 2D RTX LiDAR flat scan (linear depths + intensities + scan metadata) to a Rust subscriber via FFI. Wire the inputs from IsaacComputeRTXLidarFlatScan outputs.",
+        "metadata": {
+            "categories": ["Sensor"],
+            "keywords": ["rtx", "lidar", "rust", "ffi"]
+        },
+        "inputs": {
+            "exec": {"type": "execution", "description": "Trigger when a full scan is ready"},
+            "linearDepthData": {"type": "float[]", "memoryType": "cpu", "description": "Linear depths in metres, ordered by increasing azimuth"},
+            "intensitiesData": {"type": "uchar[]", "memoryType": "cpu", "description": "Intensities in [0,255], ordered by increasing azimuth"},
+            "horizontalFov": {"type": "float", "description": "Horizontal field of view in degrees", "default": 0.0},
+            "horizontalResolution": {"type": "float", "description": "Horizontal angular resolution in degrees", "default": 0.0},
+            "azimuthRange": {"type": "float[2]", "description": "Azimuth [min,max] in degrees", "default": [0.0, 0.0]},
+            "depthRange": {"type": "float[2]", "description": "Sensor detection range [min,max] in metres", "default": [0.0, 0.0]},
+            "numRows": {"type": "int", "description": "Number of rows", "default": 1},
+            "numCols": {"type": "int", "description": "Number of columns", "default": 0},
+            "rotationRate": {"type": "float", "description": "Sensor rotation rate in Hz", "default": 0.0}
+        },
+        "outputs": {
+            "exec": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
+        }
+    }
+}

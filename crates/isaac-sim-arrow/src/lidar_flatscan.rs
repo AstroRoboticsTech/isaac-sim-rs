@@ -5,7 +5,7 @@ use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
-pub struct LidarScan<'a> {
+pub struct LidarFlatScan<'a> {
     pub depths: &'a [f32],
     pub intensities: &'a [u8],
     pub horizontal_fov: f32,
@@ -43,7 +43,7 @@ pub fn schema() -> SchemaRef {
     ]))
 }
 
-pub fn to_record_batch(scan: &LidarScan) -> Result<RecordBatch, arrow::error::ArrowError> {
+pub fn to_record_batch(scan: &LidarFlatScan) -> Result<RecordBatch, arrow::error::ArrowError> {
     let depths_inner = Float32Array::from_iter_values(scan.depths.iter().copied());
     let depths_offsets = OffsetBuffer::from_lengths([scan.depths.len()]);
     let depths = ListArray::new(
@@ -87,7 +87,7 @@ mod tests {
     fn round_trips_through_record_batch() {
         let depths = [0.5_f32, 1.2, 2.7, 3.0, 1.8, 0.9, 4.5, 2.1];
         let intensities = [10_u8, 50, 200, 100, 75, 25, 220, 180];
-        let scan = LidarScan {
+        let scan = LidarFlatScan {
             depths: &depths,
             intensities: &intensities,
             horizontal_fov: 270.0,

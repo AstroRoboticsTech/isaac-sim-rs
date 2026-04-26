@@ -1,14 +1,13 @@
-"""Drive the PublishLidarToRust OG node with synthesized inputs in a loop.
+"""Drive the PublishLidarFlatScanToRust OG node with synthesized inputs.
 
 Kit's --exec runs this script once at startup. The script schedules an
 asyncio task that ticks every 100 ms, sets fake inputs on the OG node,
 and evaluates the graph. Each evaluation triggers the bridge's
-forward_lidar_scan which dispatches to whatever consumers are
+forward_lidar_flatscan which dispatches to whatever consumers are
 registered (e.g. the dora publisher loaded via ISAAC_SIM_RS_DORA_RUNNER).
 
 Stand-in for a real RTX upstream (IsaacComputeRTXLidarFlatScan rays
-into a USD scene). When that integration lands, replace this script
-with a USD scene + scene-load --exec.
+into a USD scene). The rerun-viewer example shows the real-RTX path.
 """
 
 import asyncio
@@ -26,7 +25,7 @@ omni.usd.get_context().new_stage()
 keys = og.Controller.Keys
 (graph, nodes, _, _) = og.Controller.edit(
     {"graph_path": "/World/LidarGraph", "evaluator_name": "push"},
-    {keys.CREATE_NODES: [("LidarFwd", "omni.isaacsimrs.bridge.PublishLidarToRust")]},
+    {keys.CREATE_NODES: [("LidarFwd", "omni.isaacsimrs.bridge.PublishLidarFlatScanToRust")]},
 )
 node = nodes[0]
 

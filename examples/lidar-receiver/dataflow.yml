@@ -2,9 +2,9 @@ nodes:
   - id: isaac-sim
     path: ./launch-kit.sh
     outputs:
-      - scan
+      - lidar_flatscan
 
   - id: receiver
     path: ../../target/debug/example-dora-lidar-receiver
     inputs:
-      scan: isaac-sim/scan
+      lidar_flatscan: isaac-sim/lidar_flatscan

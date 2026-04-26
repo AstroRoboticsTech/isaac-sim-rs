@@ -3,16 +3,16 @@ use std::sync::{Arc, Mutex};
 use arrow::array::StructArray;
 use dora_node_api::dora_core::config::DataId;
 use dora_node_api::{DoraNode, MetadataParameters};
-use isaac_sim_arrow::lidar::{to_record_batch, LidarScan};
-use isaac_sim_bridge::{register_lidar_consumer, ScanMeta};
+use isaac_sim_arrow::lidar_flatscan::{to_record_batch, LidarFlatScan};
+use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScanMeta};
 
-pub fn register_dora_lidar_publisher(node: DoraNode, output_id: impl Into<String>) {
+pub fn register_dora_lidar_flatscan_publisher(node: DoraNode, output_id: impl Into<String>) {
     let node = Arc::new(Mutex::new(node));
     let output: DataId = output_id.into().into();
 
-    register_lidar_consumer(move |scan, intensities, meta| {
+    register_lidar_flatscan_consumer(move |scan, intensities, meta| {
         if let Err(e) = publish(&node, &output, scan, intensities, meta) {
-            log::warn!("[isaac-sim-dora] lidar publish failed: {e}");
+            log::warn!("[isaac-sim-dora] lidar_flatscan publish failed: {e}");
         }
     });
 }
@@ -22,9 +22,9 @@ fn publish(
     output: &DataId,
     scan: &[f32],
     intensities: &[u8],
-    meta: &ScanMeta,
+    meta: &LidarFlatScanMeta,
 ) -> eyre::Result<()> {
-    let lidar = LidarScan {
+    let lidar = LidarFlatScan {
         depths: scan,
         intensities,
         horizontal_fov: meta.horizontal_fov,

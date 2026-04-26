@@ -15,12 +15,12 @@ pub extern "C" fn isaac_sim_rerun_init() -> i32 {
 
 fn try_init() -> eyre::Result<()> {
     Viewer::new()
-        .with_lidar("/World/LidarGraph/LidarFwd", "scene/lidar/scan")
+        .with_lidar_flatscan("/World/LidarGraph/LidarFwd", "scene/lidar/flatscan")
         .with_blueprint(|rec| {
             rec.log_static(
-                "scene/lidar/scan",
+                "scene/lidar/flatscan",
                 &rerun::TextDocument::new(
-                    "RTX LiDAR scan from Isaac Sim, projected planar (single row).",
+                    "RTX LiDAR flat scan from Isaac Sim, projected planar (single row).",
                 ),
             )?;
             Ok(())

@@ -2,7 +2,7 @@ use std::env;
 
 use rerun::{RecordingStream, RecordingStreamBuilder};
 
-use crate::lidar::register_rerun_lidar_publisher;
+use crate::lidar_flatscan::register_rerun_lidar_flatscan_publisher;
 
 const APP_ID: &str = "isaac-sim-rs";
 const GRPC_ADDR_ENV: &str = "ISAAC_SIM_RS_RERUN_GRPC_ADDR";
@@ -17,9 +17,9 @@ type BlueprintFn = Box<dyn FnOnce(&RecordingStream) -> eyre::Result<()>>;
 ///
 /// Viewer::new()
 ///     .with_grpc_addr("192.168.1.10:9876")
-///     .with_lidar("/World/LidarGraph/LidarFwd", "scene/lidar/scan")
+///     .with_lidar_flatscan("/World/LidarGraph/LidarFwd", "scene/lidar/flatscan")
 ///     .with_blueprint(|rec| {
-///         rec.log_static("scene/lidar/scan", &rerun::TextDocument::new("hello"))?;
+///         rec.log_static("scene/lidar/flatscan", &rerun::TextDocument::new("hello"))?;
 ///         Ok(())
 ///     })
 ///     .run()?;
@@ -28,7 +28,7 @@ type BlueprintFn = Box<dyn FnOnce(&RecordingStream) -> eyre::Result<()>>;
 #[derive(Default)]
 pub struct Viewer {
     grpc_addr: Option<String>,
-    lidars: Vec<(String, String)>,
+    lidar_flatscans: Vec<(String, String)>,
     blueprint: Option<BlueprintFn>,
 }
 
@@ -42,8 +42,13 @@ impl Viewer {
         self
     }
 
-    pub fn with_lidar(mut self, source: impl Into<String>, entity_path: impl Into<String>) -> Self {
-        self.lidars.push((source.into(), entity_path.into()));
+    pub fn with_lidar_flatscan(
+        mut self,
+        source: impl Into<String>,
+        entity_path: impl Into<String>,
+    ) -> Self {
+        self.lidar_flatscans
+            .push((source.into(), entity_path.into()));
         self
     }
 
@@ -67,9 +72,9 @@ impl Viewer {
             bp(&rec)?;
         }
 
-        for (source, entity_path) in self.lidars {
-            log::info!("[isaac-sim-rerun] lidar: '{source}' -> '{entity_path}'");
-            register_rerun_lidar_publisher(rec.clone(), source, entity_path);
+        for (source, entity_path) in self.lidar_flatscans {
+            log::info!("[isaac-sim-rerun] lidar_flatscan: '{source}' -> '{entity_path}'");
+            register_rerun_lidar_flatscan_publisher(rec.clone(), source, entity_path);
         }
         Ok(())
     }
@@ -80,15 +85,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn builder_collects_lidar_subscriptions() {
+    fn builder_collects_lidar_flatscan_subscriptions() {
         let v = Viewer::new()
             .with_grpc_addr("10.0.0.1:1234")
-            .with_lidar("/A", "a")
-            .with_lidar("/B", "b");
+            .with_lidar_flatscan("/A", "a")
+            .with_lidar_flatscan("/B", "b");
         assert_eq!(v.grpc_addr.as_deref(), Some("10.0.0.1:1234"));
-        assert_eq!(v.lidars.len(), 2);
-        assert_eq!(v.lidars[0], ("/A".into(), "a".into()));
-        assert_eq!(v.lidars[1], ("/B".into(), "b".into()));
+        assert_eq!(v.lidar_flatscans.len(), 2);
+        assert_eq!(v.lidar_flatscans[0], ("/A".into(), "a".into()));
+        assert_eq!(v.lidar_flatscans[1], ("/B".into(), "b".into()));
         assert!(v.blueprint.is_none());
     }
 

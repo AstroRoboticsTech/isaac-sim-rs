@@ -1,6 +1,6 @@
 use std::sync::Once;
 
-use crate::consumers::register_lidar_consumer;
+use crate::consumers::register_lidar_flatscan_consumer;
 
 static INIT: Once = Once::new();
 
@@ -14,11 +14,11 @@ pub fn init() {
 }
 
 fn register_default_consumers() {
-    register_lidar_consumer(|scan, intensities, meta| {
+    register_lidar_flatscan_consumer(|scan, intensities, meta| {
         let depth_min = scan.iter().copied().fold(f32::INFINITY, f32::min);
         let depth_max = scan.iter().copied().fold(f32::NEG_INFINITY, f32::max);
         log::info!(
-            "[isaac-sim-rs:default] lidar scan_n={} intensity_n={} fov={:.1}° rate={:.1}Hz observed_depth=[{:.3},{:.3}]m",
+            "[isaac-sim-rs:default] lidar_flatscan scan_n={} intensity_n={} fov={:.1}° rate={:.1}Hz observed_depth=[{:.3},{:.3}]m",
             scan.len(),
             intensities.len(),
             meta.horizontal_fov,

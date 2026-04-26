@@ -1,11 +1,11 @@
 {
-    "PublishLidarToRust": {
+    "PublishLidarFlatScanToRust": {
         "version": 1,
         "language": "C++",
         "description": "Forwards a 2D RTX LiDAR flat scan (linear depths + intensities + scan metadata) to a Rust subscriber via FFI. Wire the inputs from IsaacComputeRTXLidarFlatScan outputs.",
         "metadata": {
             "categories": ["Sensor"],
-            "keywords": ["rtx", "lidar", "rust", "ffi"]
+            "keywords": ["rtx", "lidar", "flatscan", "rust", "ffi"]
         },
         "inputs": {
             "exec": {"type": "execution", "description": "Trigger when a full scan is ready"},

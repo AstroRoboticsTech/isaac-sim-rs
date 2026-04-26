@@ -1,4 +1,4 @@
-"""Drive PublishLidarToRust from a real RTX LiDAR ray-casting against
+"""Drive PublishLidarFlatScanToRust from a real RTX LiDAR ray-casting against
 the Simple_Warehouse scene with a NovaCarter robot. Both assets are
 fetched at runtime from the public Isaac Sim S3 bucket (the same URL
 Kit's `/persistent/isaac/asset_root/default` setting points at).
@@ -63,8 +63,8 @@ if flat_scan is None:
         "FlatScan OG node not found after attach_annotator; check Isaac Sim version"
     )
 
-publish_path = f"{flat_scan.get_graph().get_path_to_graph()}/PublishLidarToRust"
-og.Controller.create_node(publish_path, "omni.isaacsimrs.bridge.PublishLidarToRust")
+publish_path = f"{flat_scan.get_graph().get_path_to_graph()}/PublishLidarFlatScanToRust"
+og.Controller.create_node(publish_path, "omni.isaacsimrs.bridge.PublishLidarFlatScanToRust")
 for port in FLATSCAN_TO_PUBLISH_PORTS:
     og.Controller.connect(
         flat_scan.get_attribute(f"outputs:{port}"),
@@ -73,5 +73,5 @@ for port in FLATSCAN_TO_PUBLISH_PORTS:
 
 omni.timeline.get_timeline_interface().play()
 print(
-    "[og_lidar_drive] RTX LiDAR -> PublishLidarToRust on Simple_Warehouse + NovaCarter, timeline playing"
+    "[og_lidar_drive] RTX LiDAR -> PublishLidarFlatScanToRust on Simple_Warehouse + NovaCarter, timeline playing"
 )

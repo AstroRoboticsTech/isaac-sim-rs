@@ -1,7 +1,7 @@
-use isaac_sim_bridge::{register_lidar_consumer, ScanMeta};
+use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScanMeta};
 use rerun::{Color, Points3D, RecordingStream};
 
-pub fn scan_to_points(meta: &ScanMeta, depths: &[f32]) -> Vec<[f32; 3]> {
+pub fn flatscan_to_points(meta: &LidarFlatScanMeta, depths: &[f32]) -> Vec<[f32; 3]> {
     let n = depths.len();
     let mut positions = Vec::with_capacity(n);
     for (i, &r) in depths.iter().enumerate() {
@@ -17,17 +17,17 @@ pub fn scan_to_points(meta: &ScanMeta, depths: &[f32]) -> Vec<[f32; 3]> {
     positions
 }
 
-pub fn log_lidar_scan(
+pub fn log_lidar_flatscan(
     rec: &RecordingStream,
     entity_path: &str,
     depths: &[f32],
     intensities: &[u8],
-    meta: &ScanMeta,
+    meta: &LidarFlatScanMeta,
 ) -> eyre::Result<()> {
     if depths.is_empty() {
         return Ok(());
     }
-    let positions = scan_to_points(meta, depths);
+    let positions = flatscan_to_points(meta, depths);
     let mut archetype = Points3D::new(positions);
     if intensities.len() == depths.len() {
         let colors: Vec<Color> = intensities
@@ -40,9 +40,13 @@ pub fn log_lidar_scan(
     Ok(())
 }
 
-pub fn register_rerun_lidar_publisher(rec: RecordingStream, source: String, entity_path: String) {
-    register_lidar_consumer(move |scan, intensities, meta| {
-        if let Err(e) = log_lidar_scan(&rec, &entity_path, scan, intensities, meta) {
+pub fn register_rerun_lidar_flatscan_publisher(
+    rec: RecordingStream,
+    source: String,
+    entity_path: String,
+) {
+    register_lidar_flatscan_consumer(move |scan, intensities, meta| {
+        if let Err(e) = log_lidar_flatscan(&rec, &entity_path, scan, intensities, meta) {
             log::warn!("[isaac-sim-rerun] log failed for '{source}' -> '{entity_path}': {e}");
         }
     });
@@ -52,8 +56,8 @@ pub fn register_rerun_lidar_publisher(rec: RecordingStream, source: String, enti
 mod tests {
     use super::*;
 
-    fn meta_270deg() -> ScanMeta {
-        ScanMeta {
+    fn meta_270deg() -> LidarFlatScanMeta {
+        LidarFlatScanMeta {
             horizontal_fov: 270.0,
             horizontal_resolution: 90.0,
             azimuth_min: -135.0,
@@ -67,11 +71,11 @@ mod tests {
     }
 
     #[test]
-    fn scan_to_points_places_beams_on_unit_circle() {
+    fn flatscan_to_points_places_beams_on_unit_circle() {
         use std::f32::consts::FRAC_1_SQRT_2;
 
         let depths = [1.0_f32, 1.0, 1.0, 1.0];
-        let positions = scan_to_points(&meta_270deg(), &depths);
+        let positions = flatscan_to_points(&meta_270deg(), &depths);
         assert_eq!(positions.len(), 4);
 
         let p0 = positions[0];
@@ -89,13 +93,13 @@ mod tests {
     }
 
     #[test]
-    fn log_lidar_scan_writes_to_memory_sink() {
+    fn log_lidar_flatscan_writes_to_memory_sink() {
         let depths = [1.0_f32, 1.0, 1.0, 1.0];
         let intensities = [10_u8, 80, 160, 240];
         let (rec, storage) = rerun::RecordingStreamBuilder::new("isaac-sim-rerun-test")
             .memory()
             .expect("memory recording");
-        log_lidar_scan(&rec, "lidar/scan", &depths, &intensities, &meta_270deg()).expect("log");
+        log_lidar_flatscan(&rec, "lidar/scan", &depths, &intensities, &meta_270deg()).expect("log");
         rec.flush_blocking().expect("flush");
         let msgs = storage.take();
         assert!(!msgs.is_empty());

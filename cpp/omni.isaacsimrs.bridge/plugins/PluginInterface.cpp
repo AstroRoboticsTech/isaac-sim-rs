@@ -2,8 +2,7 @@
 #include <carb/PluginUtils.h>
 #include <carb/logging/Log.h>
 #include <omni/graph/core/ogn/Registration.h>
-#include <dlfcn.h>
-#include <cstdlib>
+#include "isaac-sim-bridge/src/lib.rs.h"
 
 namespace isaacsimrs
 {
@@ -37,16 +36,7 @@ struct EagerInit
 {
     EagerInit()
     {
-        if (const char* path = std::getenv("ISAAC_SIM_RS_CDYLIB"))
-        {
-            if (void* handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL))
-            {
-                if (auto init_fn = reinterpret_cast<void (*)()>(dlsym(handle, "isaac_sim_rs_init")))
-                {
-                    init_fn();
-                }
-            }
-        }
+        isaacsimrs::init();
         INITIALIZE_OGN_NODES();
     }
 };

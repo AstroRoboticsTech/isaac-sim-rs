@@ -1,0 +1,19 @@
+[package]
+name = "example-rerun-viewer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Example: a tiny cdylib that the bridge dlopens via ISAAC_SIM_RS_RERUN_RUNNER. Uses the isaac-sim-rerun Viewer builder to subscribe a LiDAR consumer and demonstrate the blueprint hook. Shows the customization path users take when the env-driven default isn't enough."
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+isaac-sim-rerun = { path = "../../crates/isaac-sim-rerun" }
+rerun = { workspace = true }
+eyre = "0.6"
+log = { workspace = true }
+env_logger = "0.11"

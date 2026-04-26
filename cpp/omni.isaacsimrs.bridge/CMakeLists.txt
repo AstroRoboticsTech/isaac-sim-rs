@@ -100,3 +100,15 @@ else()
     message(STATUS "isaac-sim-dora cdylib not found at ${DORA_CDYLIB_PATH}; ISAAC_SIM_RS_DORA_RUNNER won't have a target. Run 'cargo build -p isaac-sim-dora' to enable.")
 endif()
 
+set(EXAMPLE_RERUN_CDYLIB_PATH "${CARGO_TARGET_DIR}/${CARGO_PROFILE}/libexample_rerun_viewer.so")
+if(EXISTS "${EXAMPLE_RERUN_CDYLIB_PATH}")
+    add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${EXAMPLE_RERUN_CDYLIB_PATH}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/bin/"
+        COMMENT "Copying example-rerun-viewer cdylib next to plugin .so (loaded via ISAAC_SIM_RS_RERUN_RUNNER when launch-kit-rerun.sh is used)"
+    )
+else()
+    message(STATUS "example-rerun-viewer cdylib not found at ${EXAMPLE_RERUN_CDYLIB_PATH}; the rerun-viewer example launch script won't have a target. Run 'cargo build -p example-rerun-viewer' to enable.")
+endif()
+

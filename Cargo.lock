@@ -3503,6 +3503,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-rerun-viewer"
+version = "5.1.0-alpha.0"
+dependencies = [
+ "env_logger",
+ "eyre",
+ "isaac-sim-rerun",
+ "log",
+ "rerun",
+]
+
+[[package]]
 name = "eyre"
 version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"

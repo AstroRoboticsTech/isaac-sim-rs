@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Raw FFI bindings to the NVIDIA Omniverse Carbonite (Carb) SDK"
+description = "Raw FFI bindings to the NVIDIA Omniverse Carbonite (Carb) SDK shipped with Isaac Sim 5.1"
 publish = false
 
 [build-dependencies]

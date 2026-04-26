@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/carb-sys",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "MPL-2.0"
+repository = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+rust-version = "1.85"
+
+[workspace.dependencies]
+log = "0.4"

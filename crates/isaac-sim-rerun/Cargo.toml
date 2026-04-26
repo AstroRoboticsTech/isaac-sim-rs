@@ -1,0 +1,15 @@
+[package]
+name = "isaac-sim-rerun"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "rerun adapter for the isaac-sim-rs SDK. rlib exposing a Viewer builder; users link this into a tiny cdylib that the bridge dlopens via ISAAC_SIM_RS_RERUN_RUNNER. The Viewer opens a rerun RecordingStream over gRPC and registers sensor consumers that log each sample to a (possibly remote) rerun viewer. LiDAR is the first sensor module; camera, IMU, articulation feedback follow."
+publish = false
+
+[dependencies]
+isaac-sim-bridge = { path = "../isaac-sim-bridge" }
+rerun = { workspace = true }
+eyre = "0.6"
+log = { workspace = true }

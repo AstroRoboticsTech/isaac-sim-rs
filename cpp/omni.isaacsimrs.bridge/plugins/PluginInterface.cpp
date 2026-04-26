@@ -63,6 +63,7 @@ struct EagerInit
         isaacsimrs::init();
         INITIALIZE_OGN_NODES();
         load_optional_runner("ISAAC_SIM_RS_DORA_RUNNER", "isaac_sim_dora_init");
+        load_optional_runner("ISAAC_SIM_RS_RERUN_RUNNER", "isaac_sim_rerun_init");
     }
 };
 

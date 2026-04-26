@@ -5,6 +5,7 @@ members = [
     "crates/isaac-sim-arrow",
     "crates/isaac-sim-bridge",
     "crates/isaac-sim-dora",
+    "crates/isaac-sim-rerun",
     "examples/lidar-receiver",
 ]
 
@@ -18,3 +19,4 @@ rust-version = "1.85"
 [workspace.dependencies]
 log = "0.4"
 arrow = "54"
+rerun = "0.31"

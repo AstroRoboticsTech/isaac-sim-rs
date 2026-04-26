@@ -7,4 +7,5 @@
 //! on a dora node output. LiDAR is the first; camera, IMU,
 //! articulation feedback, and others follow.
 
+pub mod ffi;
 pub mod lidar;

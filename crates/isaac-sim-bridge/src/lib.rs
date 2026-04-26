@@ -3,7 +3,7 @@ mod demo;
 mod lidar;
 mod lifecycle;
 
-pub use consumers::{lidar_consumer_count, register_lidar_consumer};
+pub use consumers::{dispatch_lidar_scan, lidar_consumer_count, register_lidar_consumer};
 
 #[cxx::bridge(namespace = "isaacsimrs")]
 mod ffi {

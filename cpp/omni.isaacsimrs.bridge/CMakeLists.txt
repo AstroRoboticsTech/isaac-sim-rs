@@ -83,3 +83,15 @@ add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
         "${CMAKE_CURRENT_SOURCE_DIR}/bin/"
     COMMENT "Copying Rust cdylib next to plugin .so"
 )
+
+set(DORA_CDYLIB_PATH "${CARGO_TARGET_DIR}/${CARGO_PROFILE}/libisaac_sim_dora.so")
+if(EXISTS "${DORA_CDYLIB_PATH}")
+    add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${DORA_CDYLIB_PATH}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/bin/"
+        COMMENT "Copying isaac-sim-dora cdylib next to plugin .so (loaded on demand via ISAAC_SIM_RS_DORA_RUNNER)"
+    )
+else()
+    message(STATUS "isaac-sim-dora cdylib not found at ${DORA_CDYLIB_PATH}; ISAAC_SIM_RS_DORA_RUNNER won't have a target. Run 'cargo build -p isaac-sim-dora' to enable.")
+endif()

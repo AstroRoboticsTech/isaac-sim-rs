@@ -5,6 +5,7 @@ members = [
     "crates/isaac-sim-arrow",
     "crates/isaac-sim-bridge",
     "crates/isaac-sim-dora",
+    "examples/lidar-receiver",
 ]
 
 [workspace.package]

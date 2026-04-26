@@ -8,6 +8,9 @@ rust-version.workspace = true
 description = "dora-rs adapter for the isaac-sim-rs SDK. Publishes any sensor stream from the bridge onto a dora node output as Apache Arrow record batches. LiDAR is the first sensor module; camera, IMU, articulation feedback, and others follow as the bridge exposes them."
 publish = false
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 isaac-sim-bridge = { path = "../isaac-sim-bridge" }
 isaac-sim-arrow = { path = "../isaac-sim-arrow" }

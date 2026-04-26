@@ -1,0 +1,14 @@
+[package]
+name = "example-dora-lidar-receiver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Example: subscribe to a LiDAR stream from Isaac Sim (running as a dora source via the omni.isaacsimrs.bridge extension + isaac-sim-dora cdylib) and print a one-line summary per scan."
+publish = false
+
+[dependencies]
+arrow = { workspace = true }
+dora-node-api = { version = "0.5", features = ["tracing"] }
+eyre = "0.6"

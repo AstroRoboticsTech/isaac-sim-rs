@@ -8,7 +8,7 @@ export ISAAC_SIM_RS_RERUN_RUNNER="${ISAAC_SIM_RS}/cpp/omni.isaacsimrs.bridge/bin
 export ISAAC_SIM_RS_RERUN_GRPC_ADDR="${ISAAC_SIM_RS_RERUN_GRPC_ADDR:-127.0.0.1:9876}"
 
 exec "${ISAAC_SIM}/kit/kit" \
-    "${ISAAC_SIM}/apps/isaacsim.exp.base.kit" \
+    "${ISAAC_SIM}/apps/isaacsim.exp.full.kit" \
     --no-window \
     --no-ros-env \
     --ext-folder "${ISAAC_SIM_RS}/cpp" \

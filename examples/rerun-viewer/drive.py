@@ -1,70 +1,77 @@
-"""Drive the PublishLidarToRust OG node with synthesized inputs in a loop.
+"""Drive PublishLidarToRust from a real RTX LiDAR ray-casting against
+the Simple_Warehouse scene with a NovaCarter robot. Both assets are
+fetched at runtime from the public Isaac Sim S3 bucket (the same URL
+Kit's `/persistent/isaac/asset_root/default` setting points at).
 
-Kit's --exec runs this script once at startup. The script schedules an
-asyncio task that ticks every 100 ms, sets fake inputs on the OG node,
-and evaluates the graph. Each evaluation triggers the bridge's
-forward_lidar_scan which dispatches to whatever consumers are
-registered (e.g. the dora publisher loaded via ISAAC_SIM_RS_DORA_RUNNER).
-
-Stand-in for a real RTX upstream (IsaacComputeRTXLidarFlatScan rays
-into a USD scene). When that integration lands, replace this script
-with a USD scene + scene-load --exec.
+Replaces the synthetic drive: the bridge now sees real depths that
+vary with azimuth as the warehouse geometry occludes rays.
 """
 
-import asyncio
-import math
-
 import omni.graph.core as og
-import omni.kit.app
+import omni.timeline
 import omni.usd
+from isaacsim.core.api import World
+from isaacsim.core.utils.stage import add_reference_to_stage, open_stage
+from isaacsim.sensors.rtx import LidarRtx
 
-SAMPLES = 360
-PERIOD_S = 0.1
+ASSETS_ROOT = "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1"
+WAREHOUSE_USD = f"{ASSETS_ROOT}/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+CARTER_USD = f"{ASSETS_ROOT}/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+SCENE_ROOT = "/Root/World"
+CARTER_PRIM = f"{SCENE_ROOT}/Carter"
+LIDAR_PRIM = f"{CARTER_PRIM}/chassis_link/lidar_2d"
+LIDAR_CONFIG = "Example_Rotary_2D"
 
-omni.usd.get_context().new_stage()
-
-keys = og.Controller.Keys
-(graph, nodes, _, _) = og.Controller.edit(
-    {"graph_path": "/World/LidarGraph", "evaluator_name": "push"},
-    {keys.CREATE_NODES: [("LidarFwd", "omni.isaacsimrs.bridge.PublishLidarToRust")]},
+FLATSCAN_TO_PUBLISH_PORTS = (
+    "exec",
+    "linearDepthData",
+    "intensitiesData",
+    "horizontalFov",
+    "horizontalResolution",
+    "azimuthRange",
+    "depthRange",
+    "numRows",
+    "numCols",
+    "rotationRate",
 )
-node = nodes[0]
 
-attrs = {
-    name: node.get_attribute(f"inputs:{name}")
-    for name in (
-        "linearDepthData",
-        "intensitiesData",
-        "horizontalFov",
-        "horizontalResolution",
-        "azimuthRange",
-        "depthRange",
-        "numRows",
-        "numCols",
-        "rotationRate",
+open_stage(WAREHOUSE_USD)
+add_reference_to_stage(CARTER_USD, CARTER_PRIM)
+
+world = World(stage_units_in_meters=1.0)
+lidar = world.scene.add(
+    LidarRtx(
+        prim_path=LIDAR_PRIM,
+        name="rerun_demo_lidar",
+        config_file_name=LIDAR_CONFIG,
     )
-}
+)
+world.reset()
+lidar.attach_annotator("IsaacComputeRTXLidarFlatScan")
 
-og.Controller.set(attrs["horizontalFov"], 360.0)
-og.Controller.set(attrs["horizontalResolution"], 360.0 / SAMPLES)
-og.Controller.set(attrs["azimuthRange"], [-180.0, 180.0])
-og.Controller.set(attrs["depthRange"], [0.1, 30.0])
-og.Controller.set(attrs["numRows"], 1)
-og.Controller.set(attrs["numCols"], SAMPLES)
-og.Controller.set(attrs["rotationRate"], 1.0 / PERIOD_S)
+flat_scan = next(
+    (
+        n
+        for g in og.get_all_graphs()
+        for n in g.get_nodes()
+        if n.get_type_name() == "isaacsim.sensors.rtx.IsaacComputeRTXLidarFlatScan"
+    ),
+    None,
+)
+if flat_scan is None:
+    raise RuntimeError(
+        "FlatScan OG node not found after attach_annotator; check Isaac Sim version"
+    )
 
+publish_path = f"{flat_scan.get_graph().get_path_to_graph()}/PublishLidarToRust"
+og.Controller.create_node(publish_path, "omni.isaacsimrs.bridge.PublishLidarToRust")
+for port in FLATSCAN_TO_PUBLISH_PORTS:
+    og.Controller.connect(
+        flat_scan.get_attribute(f"outputs:{port}"),
+        f"{publish_path}.inputs:{port}",
+    )
 
-async def drive_loop():
-    t = 0.0
-    while True:
-        depths = [5.0 + math.sin(i * (math.tau / SAMPLES) + t) * 2.0 for i in range(SAMPLES)]
-        intensities = [(i + int(t * 25)) % 256 for i in range(SAMPLES)]
-        og.Controller.set(attrs["linearDepthData"], depths)
-        og.Controller.set(attrs["intensitiesData"], intensities)
-        og.Controller.evaluate_sync(graph)
-        t += 0.05
-        await asyncio.sleep(PERIOD_S)
-
-
-print("[og_lidar_drive_loop] graph constructed, drive task scheduled")
-asyncio.ensure_future(drive_loop())
+omni.timeline.get_timeline_interface().play()
+print(
+    "[og_lidar_drive] RTX LiDAR -> PublishLidarToRust on Simple_Warehouse + NovaCarter, timeline playing"
+)

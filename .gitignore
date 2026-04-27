@@ -26,3 +26,7 @@ tests/cpp/**/build/
 #.idea/
 ROADMAP.md
 AUDIT.md
+
+# Per-developer just recipes (cross-host SSH, personal paths). The
+# public `justfile` imports this with `import?` if it exists.
+justfile.local

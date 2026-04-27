@@ -3,8 +3,18 @@ use std::sync::{Arc, Mutex};
 use arrow::array::StructArray;
 use dora_node_api::dora_core::config::DataId;
 use dora_node_api::{DoraNode, MetadataParameters};
-use isaac_sim_arrow::lidar::flatscan::{to_record_batch, LidarFlatScan};
-use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScanMeta, SourceFilter};
+use isaac_sim_arrow::lidar::flatscan::{to_record_batch, LidarFlatScan as ArrowFlatScan};
+use isaac_sim_bridge::{
+    register_lidar_flatscan_consumer, LidarFlatScan, LidarFlatScanMeta, SourceFilter,
+};
+
+use crate::sensor::DoraPublish;
+
+impl DoraPublish for LidarFlatScan {
+    fn register(node: Arc<Mutex<DoraNode>>, source: String, output_id: String) {
+        register_dora_lidar_flatscan_publisher(node, source, output_id);
+    }
+}
 
 pub fn register_dora_lidar_flatscan_publisher(
     node: Arc<Mutex<DoraNode>>,
@@ -31,7 +41,7 @@ fn publish(
     intensities: &[u8],
     meta: &LidarFlatScanMeta,
 ) -> eyre::Result<()> {
-    let lidar = LidarFlatScan {
+    let lidar = ArrowFlatScan {
         depths: scan,
         intensities,
         horizontal_fov: meta.horizontal_fov,

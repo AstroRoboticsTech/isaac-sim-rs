@@ -1,5 +1,13 @@
-use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloudMeta};
+use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloud, LidarPointCloudMeta};
 use rerun::{Points3D, RecordingStream};
+
+use crate::sensor::RerunRender;
+
+impl RerunRender for LidarPointCloud {
+    fn register(rec: RecordingStream, source: String, entity_path: String) {
+        register_rerun_lidar_pointcloud_publisher(rec, source, entity_path);
+    }
+}
 
 pub fn log_lidar_pointcloud(
     rec: &RecordingStream,

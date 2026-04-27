@@ -1,5 +1,13 @@
 use crate::channel::Channel;
 use crate::ffi::LidarPointCloudMeta;
+use crate::sensor::Sensor;
+
+/// Type-level marker for the 3D RTX LiDAR PointCloud sensor channel.
+pub struct LidarPointCloud;
+
+impl Sensor for LidarPointCloud {
+    const NAME: &'static str = "lidar_pointcloud";
+}
 
 pub type Callback = Box<dyn Fn(&str, &[f32], &LidarPointCloudMeta) + Send + Sync + 'static>;
 

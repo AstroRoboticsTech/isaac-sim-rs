@@ -1,5 +1,13 @@
-use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScanMeta};
+use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScan, LidarFlatScanMeta};
 use rerun::{Color, Points3D, RecordingStream};
+
+use crate::sensor::RerunRender;
+
+impl RerunRender for LidarFlatScan {
+    fn register(rec: RecordingStream, source: String, entity_path: String) {
+        register_rerun_lidar_flatscan_publisher(rec, source, entity_path);
+    }
+}
 
 pub fn flatscan_to_points(meta: &LidarFlatScanMeta, depths: &[f32]) -> Vec<[f32; 3]> {
     let n = depths.len();

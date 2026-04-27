@@ -1,37 +1,39 @@
 use std::env;
 
+use isaac_sim_bridge::{LidarFlatScan, LidarPointCloud};
 use rerun::{RecordingStream, RecordingStreamBuilder};
 
-use crate::lidar::flatscan::register_rerun_lidar_flatscan_publisher;
-use crate::lidar::pointcloud::register_rerun_lidar_pointcloud_publisher;
+use crate::sensor::RerunRender;
 
 const APP_ID: &str = "isaac-sim-rs";
 const GRPC_ADDR_ENV: &str = "ISAAC_SIM_RS_RERUN_GRPC_ADDR";
 const DEFAULT_GRPC_ADDR: &str = "127.0.0.1:9876";
 
 type BlueprintFn = Box<dyn FnOnce(&RecordingStream) -> eyre::Result<()>>;
+type Bind = Box<dyn FnOnce(&RecordingStream)>;
 
 /// Pure config until `.run()`; no I/O happens earlier.
 ///
-/// Each `with_*` call registers a source-filtered consumer that logs only
-/// when the dispatched `source` matches; multiple sensors of the same
-/// type co-exist by chaining more `with_*` calls.
+/// `with_source::<S>(source, entity)` registers a source-filtered
+/// consumer for any sensor `S: RerunRender`. Multiple sensors of the
+/// same type co-exist by chaining more `with_source` calls. Convenience
+/// `with_lidar_flatscan` / `with_lidar_pointcloud` shims call through.
 ///
 /// ```no_run
 /// use isaac_sim_rerun::Viewer;
+/// use isaac_sim_bridge::{LidarFlatScan, LidarPointCloud};
 ///
 /// Viewer::new()
 ///     .with_grpc_addr("192.168.1.10:9876")
-///     .with_lidar_flatscan("/World/Carter/lidar_2d", "scene/lidar/flatscan")
-///     .with_lidar_pointcloud("/World/Carter/.../PandarXT", "scene/lidar/pointcloud")
+///     .with_source(LidarFlatScan, "/World/Carter/lidar_2d", "scene/lidar/flatscan")
+///     .with_source(LidarPointCloud, "/World/Carter/.../PandarXT", "scene/lidar/pointcloud")
 ///     .run()?;
 /// # Ok::<(), eyre::Report>(())
 /// ```
 #[derive(Default)]
 pub struct Viewer {
     grpc_addr: Option<String>,
-    lidar_flatscans: Vec<(String, String)>,
-    lidar_pointclouds: Vec<(String, String)>,
+    binds: Vec<Bind>,
     blueprint: Option<BlueprintFn>,
 }
 
@@ -45,24 +47,38 @@ impl Viewer {
         self
     }
 
-    pub fn with_lidar_flatscan(
+    /// Register a rerun publisher for sensor `S`. Each call adds an
+    /// independent source-filtered subscription.
+    pub fn with_source<S: RerunRender>(
         mut self,
+        _sensor: S,
         source: impl Into<String>,
         entity_path: impl Into<String>,
     ) -> Self {
-        self.lidar_flatscans
-            .push((source.into(), entity_path.into()));
+        let source = source.into();
+        let entity_path = entity_path.into();
+        let label = format!("{}: '{source}' -> '{entity_path}'", S::NAME);
+        self.binds.push(Box::new(move |rec: &RecordingStream| {
+            log::info!("[isaac-sim-rerun] {label}");
+            S::register(rec.clone(), source, entity_path);
+        }));
         self
     }
 
-    pub fn with_lidar_pointcloud(
-        mut self,
+    pub fn with_lidar_flatscan(
+        self,
         source: impl Into<String>,
         entity_path: impl Into<String>,
     ) -> Self {
-        self.lidar_pointclouds
-            .push((source.into(), entity_path.into()));
-        self
+        self.with_source(LidarFlatScan, source, entity_path)
+    }
+
+    pub fn with_lidar_pointcloud(
+        self,
+        source: impl Into<String>,
+        entity_path: impl Into<String>,
+    ) -> Self {
+        self.with_source(LidarPointCloud, source, entity_path)
     }
 
     pub fn with_blueprint<F>(mut self, f: F) -> Self
@@ -85,13 +101,8 @@ impl Viewer {
             bp(&rec)?;
         }
 
-        for (source, entity_path) in self.lidar_flatscans {
-            log::info!("[isaac-sim-rerun] lidar_flatscan: '{source}' -> '{entity_path}'");
-            register_rerun_lidar_flatscan_publisher(rec.clone(), source, entity_path);
-        }
-        for (source, entity_path) in self.lidar_pointclouds {
-            log::info!("[isaac-sim-rerun] lidar_pointcloud: '{source}' -> '{entity_path}'");
-            register_rerun_lidar_pointcloud_publisher(rec.clone(), source, entity_path);
+        for bind in self.binds {
+            bind(&rec);
         }
         Ok(())
     }
@@ -109,8 +120,7 @@ mod tests {
             .with_lidar_pointcloud("/B", "b")
             .with_lidar_pointcloud("/C", "c");
         assert_eq!(v.grpc_addr.as_deref(), Some("10.0.0.1:1234"));
-        assert_eq!(v.lidar_flatscans.len(), 1);
-        assert_eq!(v.lidar_pointclouds.len(), 2);
+        assert_eq!(v.binds.len(), 3);
         assert!(v.blueprint.is_none());
     }
 

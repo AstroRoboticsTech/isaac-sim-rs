@@ -1,3 +1,4 @@
+use isaac_sim_bridge::{LidarFlatScan, LidarPointCloud};
 use isaac_sim_rerun::Viewer;
 
 #[unsafe(no_mangle)]
@@ -15,11 +16,13 @@ pub extern "C" fn isaac_sim_rerun_init() -> i32 {
 
 fn try_init() -> eyre::Result<()> {
     Viewer::new()
-        .with_lidar_flatscan(
+        .with_source(
+            LidarFlatScan,
             "/Root/World/Carter/chassis_link/lidar_2d",
             "scene/lidar/flatscan",
         )
-        .with_lidar_pointcloud(
+        .with_source(
+            LidarPointCloud,
             "/Root/World/Carter/chassis_link/sensors/XT_32/PandarXT_32_10hz",
             "scene/lidar/pointcloud",
         )

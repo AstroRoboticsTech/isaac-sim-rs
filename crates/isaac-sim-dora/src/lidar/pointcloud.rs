@@ -3,8 +3,18 @@ use std::sync::{Arc, Mutex};
 use arrow::array::StructArray;
 use dora_node_api::dora_core::config::DataId;
 use dora_node_api::{DoraNode, MetadataParameters};
-use isaac_sim_arrow::lidar::pointcloud::{to_record_batch, LidarPointCloud};
-use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloudMeta, SourceFilter};
+use isaac_sim_arrow::lidar::pointcloud::{to_record_batch, LidarPointCloud as ArrowPointCloud};
+use isaac_sim_bridge::{
+    register_lidar_pointcloud_consumer, LidarPointCloud, LidarPointCloudMeta, SourceFilter,
+};
+
+use crate::sensor::DoraPublish;
+
+impl DoraPublish for LidarPointCloud {
+    fn register(node: Arc<Mutex<DoraNode>>, source: String, output_id: String) {
+        register_dora_lidar_pointcloud_publisher(node, source, output_id);
+    }
+}
 
 pub fn register_dora_lidar_pointcloud_publisher(
     node: Arc<Mutex<DoraNode>>,
@@ -30,7 +40,7 @@ fn publish(
     points: &[f32],
     meta: &LidarPointCloudMeta,
 ) -> eyre::Result<()> {
-    let pc = LidarPointCloud {
+    let pc = ArrowPointCloud {
         points,
         num_points: meta.num_points,
         width: meta.width,

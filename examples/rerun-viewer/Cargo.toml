@@ -12,6 +12,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
+isaac-sim-bridge = { path = "../../crates/isaac-sim-bridge" }
 isaac-sim-rerun = { path = "../../crates/isaac-sim-rerun" }
 rerun = { workspace = true }
 eyre = "0.6"

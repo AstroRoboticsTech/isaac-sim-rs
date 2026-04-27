@@ -1,5 +1,13 @@
 use crate::channel::Channel;
 use crate::ffi::LidarFlatScanMeta;
+use crate::sensor::Sensor;
+
+/// Type-level marker for the 2D RTX LiDAR FlatScan sensor channel.
+pub struct LidarFlatScan;
+
+impl Sensor for LidarFlatScan {
+    const NAME: &'static str = "lidar_flatscan";
+}
 
 pub type Callback = Box<dyn Fn(&str, &[f32], &[u8], &LidarFlatScanMeta) + Send + Sync + 'static>;
 

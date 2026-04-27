@@ -2,16 +2,9 @@ use std::env;
 use std::sync::{Arc, Mutex};
 
 use dora_node_api::DoraNode;
+use isaac_sim_bridge::{LidarFlatScan, LidarPointCloud};
 
-use crate::lidar::flatscan::register_dora_lidar_flatscan_publisher;
-use crate::lidar::pointcloud::register_dora_lidar_pointcloud_publisher;
-
-const LIDAR_FLATSCAN_SOURCE_ENV: &str = "ISAAC_SIM_RS_DORA_LIDAR_FLATSCAN_SOURCE";
-const LIDAR_FLATSCAN_OUTPUT_ENV: &str = "ISAAC_SIM_RS_DORA_LIDAR_FLATSCAN_OUTPUT";
-const DEFAULT_LIDAR_FLATSCAN_OUTPUT: &str = "lidar_flatscan";
-const LIDAR_POINTCLOUD_SOURCE_ENV: &str = "ISAAC_SIM_RS_DORA_LIDAR_POINTCLOUD_SOURCE";
-const LIDAR_POINTCLOUD_OUTPUT_ENV: &str = "ISAAC_SIM_RS_DORA_LIDAR_POINTCLOUD_OUTPUT";
-const DEFAULT_LIDAR_POINTCLOUD_OUTPUT: &str = "lidar_pointcloud";
+use crate::sensor::DoraPublish;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn isaac_sim_dora_init() -> i32 {
@@ -28,25 +21,25 @@ fn try_init() -> eyre::Result<()> {
     let (node, _events) = DoraNode::init_from_env()?;
     let node = Arc::new(Mutex::new(node));
 
-    let flatscan_source = env::var(LIDAR_FLATSCAN_SOURCE_ENV).unwrap_or_default();
-    let flatscan_output = env::var(LIDAR_FLATSCAN_OUTPUT_ENV)
-        .unwrap_or_else(|_| DEFAULT_LIDAR_FLATSCAN_OUTPUT.to_string());
-    log::info!(
-        "[isaac-sim-dora] lidar_flatscan publisher: source='{flatscan_source}' output='{flatscan_output}'"
-    );
-    register_dora_lidar_flatscan_publisher(Arc::clone(&node), flatscan_source, flatscan_output);
-
-    let pointcloud_source = env::var(LIDAR_POINTCLOUD_SOURCE_ENV).unwrap_or_default();
-    let pointcloud_output = env::var(LIDAR_POINTCLOUD_OUTPUT_ENV)
-        .unwrap_or_else(|_| DEFAULT_LIDAR_POINTCLOUD_OUTPUT.to_string());
-    log::info!(
-        "[isaac-sim-dora] lidar_pointcloud publisher: source='{pointcloud_source}' output='{pointcloud_output}'"
-    );
-    register_dora_lidar_pointcloud_publisher(
-        Arc::clone(&node),
-        pointcloud_source,
-        pointcloud_output,
-    );
+    register_publisher::<LidarFlatScan>(Arc::clone(&node));
+    register_publisher::<LidarPointCloud>(Arc::clone(&node));
 
     Ok(())
+}
+
+/// Look up `ISAAC_SIM_RS_DORA_<NAME>_SOURCE` and `_OUTPUT` for sensor
+/// `S`, defaulting OUTPUT to `S::NAME`. Adding a new sensor is just
+/// another `register_publisher::<NewSensor>(node)` call here.
+fn register_publisher<S: DoraPublish>(node: Arc<Mutex<DoraNode>>) {
+    let name_upper = S::NAME.to_uppercase();
+    let source_env = format!("ISAAC_SIM_RS_DORA_{name_upper}_SOURCE");
+    let output_env = format!("ISAAC_SIM_RS_DORA_{name_upper}_OUTPUT");
+
+    let source = env::var(&source_env).unwrap_or_default();
+    let output = env::var(&output_env).unwrap_or_else(|_| S::NAME.to_string());
+    log::info!(
+        "[isaac-sim-dora] {} publisher: source='{source}' output='{output}'",
+        S::NAME
+    );
+    S::register(node, source, output);
 }

@@ -7,3 +7,6 @@
 
 pub mod ffi;
 pub mod lidar;
+pub mod sensor;
+
+pub use sensor::DoraPublish;

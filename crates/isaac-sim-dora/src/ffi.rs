@@ -1,8 +1,9 @@
 use std::env;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use dora_node_api::DoraNode;
 use isaac_sim_bridge::{LidarFlatScan, LidarPointCloud};
+use parking_lot::Mutex;
 
 use crate::sensor::DoraPublish;
 

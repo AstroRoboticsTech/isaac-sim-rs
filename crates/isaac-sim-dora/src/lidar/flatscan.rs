@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use arrow::array::StructArray;
 use dora_node_api::dora_core::config::DataId;
@@ -7,6 +7,7 @@ use isaac_sim_arrow::lidar::flatscan::{to_record_batch, LidarFlatScan as ArrowFl
 use isaac_sim_bridge::{
     register_lidar_flatscan_consumer, LidarFlatScan, LidarFlatScanMeta, SourceFilter,
 };
+use parking_lot::Mutex;
 
 use crate::sensor::DoraPublish;
 
@@ -57,9 +58,7 @@ fn publish(
     let batch = to_record_batch(&lidar)?;
     let array = StructArray::from(batch);
 
-    let mut guard = node
-        .lock()
-        .map_err(|_| eyre::eyre!("dora node mutex poisoned"))?;
+    let mut guard = node.lock();
     guard.send_output(output.clone(), MetadataParameters::default(), array)?;
     Ok(())
 }

@@ -1,7 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use dora_node_api::DoraNode;
 use isaac_sim_bridge::Sensor;
+use parking_lot::Mutex;
 
 /// Per-sensor trait that knows how to register a dora publisher for
 /// that sensor type. Each sensor module provides one impl, so generic

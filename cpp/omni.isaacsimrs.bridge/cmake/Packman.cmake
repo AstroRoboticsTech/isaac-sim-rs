@@ -15,7 +15,12 @@ function(packman_pull_usd OUT_VAR)
 </project>
 ")
 
-    if(NOT EXISTS "${USD_LINK}/include/pxr/base/tf/token.h")
+    # A header-existence check is fragile under partial extraction
+    # (Ctrl-C mid-pull): a stray header survives, the symlink+marker
+    # don't, but the next configure thinks the cache is good. Use a
+    # post-extract marker that we write only after a successful pull.
+    set(USD_COMPLETE "${USD_LINK}/.packman_complete")
+    if(NOT EXISTS "${USD_COMPLETE}")
         message(STATUS "packman: fetching USD ${USD_PKG_VERSION} (~3.8 GB extracted, cached after first run)")
         execute_process(
             COMMAND "${PACKMAN}" pull "${USD_DEPS_XML}" --platform linux-x86_64
@@ -24,6 +29,7 @@ function(packman_pull_usd OUT_VAR)
         if(NOT result EQUAL 0)
             message(FATAL_ERROR "packman pull usd-release failed (exit ${result})")
         endif()
+        file(WRITE "${USD_COMPLETE}" "${USD_PKG_VERSION}\n")
     endif()
 
     set(${OUT_VAR} "${USD_LINK}" PARENT_SCOPE)

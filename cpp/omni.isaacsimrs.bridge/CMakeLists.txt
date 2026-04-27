@@ -26,10 +26,34 @@ if(DEFINED ENV{CARGO_PROFILE})
 else()
     set(CARGO_PROFILE "debug" CACHE STRING "Cargo build profile (debug or release)")
 endif()
-set(RUST_CDYLIB_PATH "${CARGO_TARGET_DIR}/${CARGO_PROFILE}/libisaac_sim_bridge.so")
-if(NOT EXISTS "${RUST_CDYLIB_PATH}")
-    message(FATAL_ERROR "Rust cdylib not found at ${RUST_CDYLIB_PATH}; run 'cargo build -p isaac-sim-bridge' first")
+set(CARGO_OUTPUT_DIR "${CARGO_TARGET_DIR}/${CARGO_PROFILE}")
+
+# cargo invokes cargo on every build. The custom target has no
+# declared sources or outputs cmake can introspect — that's
+# intentional, since cargo's own incremental machinery is the source
+# of truth for "what changed". cmake re-runs cargo every build (a
+# no-op in cargo when nothing changed; ~ms cost). The plugin target's
+# `add_dependencies` below makes cargo run *before* the plugin links,
+# so the cdylib + cxxbridge shim files at ${CARGO_OUTPUT_DIR} and
+# ${CARGO_TARGET_DIR}/cxxbridge are guaranteed current at link time.
+# This is what fixes the "stale cdylib" + "stale cxxbridge shim"
+# class of bugs we kept hitting.
+set(CARGO_PROFILE_FLAG "")
+if(CARGO_PROFILE STREQUAL "release")
+    set(CARGO_PROFILE_FLAG "--release")
 endif()
+add_custom_target(cargo_cdylibs ALL
+    COMMAND ${CMAKE_COMMAND} -E env
+        "CARGO_TARGET_DIR=${CARGO_TARGET_DIR}"
+        cargo build --workspace --lib ${CARGO_PROFILE_FLAG}
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+    BYPRODUCTS
+        "${CARGO_OUTPUT_DIR}/libisaac_sim_bridge.so"
+        "${CARGO_OUTPUT_DIR}/libisaac_sim_dora.so"
+        "${CARGO_OUTPUT_DIR}/libexample_rerun_viewer.so"
+    COMMENT "[isaacsimrs] cargo build --workspace --lib"
+    USES_TERMINAL
+)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(Ogn)
@@ -54,7 +78,7 @@ file(GLOB_RECURSE CXX_BRIDGE_SHIMS CONFIGURE_DEPENDS "${CARGO_TARGET_DIR}/cxxbri
 
 file(GLOB CXX_RUNTIME_CC "$ENV{HOME}/.cargo/registry/src/*/cxx-*/src/cxx.cc")
 if(NOT CXX_RUNTIME_CC)
-    message(FATAL_ERROR "Could not find cxx.cc in cargo registry; ensure the cxx crate has been built (cargo build -p isaac-sim-bridge)")
+    message(FATAL_ERROR "Could not find cxx.cc in cargo registry; ensure cargo has been run at least once before cmake configure")
 endif()
 list(GET CXX_RUNTIME_CC 0 CXX_RUNTIME_CC)
 
@@ -66,6 +90,12 @@ add_library(omni_isaacsimrs_bridge SHARED
     "${CXX_RUNTIME_CC}"
 )
 
+# Plugin can't link until cargo has produced the cdylibs (and the
+# cxxbridge shim files in ${CARGO_TARGET_DIR}/cxxbridge/...). This is
+# the dependency that fixes the stale-cdylib failure modes — without
+# it, cmake would happily link against whatever ./bin/ already had.
+add_dependencies(omni_isaacsimrs_bridge cargo_cdylibs)
+
 set_target_properties(omni_isaacsimrs_bridge PROPERTIES
     OUTPUT_NAME "omni.isaacsimrs.bridge.plugin"
     PREFIX "lib"
@@ -73,6 +103,8 @@ set_target_properties(omni_isaacsimrs_bridge PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
     BUILD_RPATH "$ORIGIN"
     INSTALL_RPATH "$ORIGIN"
+    INSTALL_RPATH_USE_LINK_PATH OFF
+    BUILD_WITH_INSTALL_RPATH ON
 )
 
 target_include_directories(omni_isaacsimrs_bridge PRIVATE
@@ -87,48 +119,29 @@ target_include_directories(omni_isaacsimrs_bridge PRIVATE
 
 target_link_directories(omni_isaacsimrs_bridge PRIVATE
     "${USD_ROOT}/lib"
-    "${CARGO_TARGET_DIR}/${CARGO_PROFILE}"
 )
 
-# Link against the cdylib by SONAME (`-l:libisaac_sim_bridge.so`) rather
-# than the absolute build-time path. The runtime dependency is then
-# resolved via $ORIGIN against the bin/ copy regardless of which cargo
-# profile produced it, so a profile change without rerunning cargo
-# can't stale the embedded DT_NEEDED entry.
+# Link by absolute path so cmake tracks the cdylib's mtime as a link
+# input — when cargo rebuilds it, cmake notices and relinks the
+# plugin (which then triggers the POST_BUILD copy below). The runtime
+# DT_NEEDED entry stays as bare `libisaac_sim_bridge.so` because
+# that's the file's basename, and `$ORIGIN` in RUNPATH resolves it
+# against bin/ at dlopen time.
 target_link_libraries(omni_isaacsimrs_bridge PRIVATE
     dl
-    -l:libisaac_sim_bridge.so
+    "${CARGO_OUTPUT_DIR}/libisaac_sim_bridge.so"
     CUDA::cudart
 )
 
-add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RUST_CDYLIB_PATH}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/bin/"
-    COMMENT "Copying Rust cdylib next to plugin .so"
-)
-
-set(DORA_CDYLIB_PATH "${CARGO_TARGET_DIR}/${CARGO_PROFILE}/libisaac_sim_dora.so")
-if(EXISTS "${DORA_CDYLIB_PATH}")
+# Copy each cdylib next to the plugin .so. POST_BUILD here is fine —
+# the plugin always relinks when any cdylib changes (because the
+# cargo_cdylibs dependency forces cargo first, and cmake recognises
+# the new mtime via BYPRODUCTS).
+foreach(crate isaac_sim_bridge isaac_sim_dora example_rerun_viewer)
     add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${DORA_CDYLIB_PATH}"
+            "${CARGO_OUTPUT_DIR}/lib${crate}.so"
             "${CMAKE_CURRENT_SOURCE_DIR}/bin/"
-        COMMENT "Copying isaac-sim-dora cdylib next to plugin .so (loaded on demand via ISAAC_SIM_RS_DORA_RUNNER)"
+        COMMENT "[isaacsimrs] copying lib${crate}.so to bin/"
     )
-else()
-    message(STATUS "isaac-sim-dora cdylib not found at ${DORA_CDYLIB_PATH}; ISAAC_SIM_RS_DORA_RUNNER won't have a target. Run 'cargo build -p isaac-sim-dora' to enable.")
-endif()
-
-set(EXAMPLE_RERUN_CDYLIB_PATH "${CARGO_TARGET_DIR}/${CARGO_PROFILE}/libexample_rerun_viewer.so")
-if(EXISTS "${EXAMPLE_RERUN_CDYLIB_PATH}")
-    add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${EXAMPLE_RERUN_CDYLIB_PATH}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/bin/"
-        COMMENT "Copying example-rerun-viewer cdylib next to plugin .so (loaded via ISAAC_SIM_RS_RERUN_RUNNER when launch-kit-rerun.sh is used)"
-    )
-else()
-    message(STATUS "example-rerun-viewer cdylib not found at ${EXAMPLE_RERUN_CDYLIB_PATH}; the rerun-viewer example launch script won't have a target. Run 'cargo build -p example-rerun-viewer' to enable.")
-endif()
-
+endforeach()

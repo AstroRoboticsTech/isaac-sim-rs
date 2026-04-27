@@ -55,22 +55,18 @@ cd isaac-sim-rs
 export ISAAC_SIM=/path/to/isaac-sim
 export ISAAC_SIM_RS=$(pwd)
 
-# 3. build the Rust cdylibs
-cargo build --release -p isaac-sim-bridge -p isaac-sim-dora \
-                      -p example-dora-lidar-receiver
+# 3. build (cmake drives cargo for every workspace cdylib via a
+#    custom target; CMake fetches USD via NVIDIA packman the first
+#    time, ~3.8 GB)
+ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release just build
 
-# 4. build the C++ Carb plugin (CMake fetches USD via NVIDIA packman the first time, ~3.8 GB)
-cd cpp/omni.isaacsimrs.bridge && rm -rf build && mkdir build && cd build
-ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release cmake .. -Wno-dev
-ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release cmake --build . -j$(nproc)
-
-# 5. run the example dora pipeline
+# 4. run the example dora pipeline
 cd $ISAAC_SIM_RS/examples/lidar-receiver
 dora up
 dora build dataflow.yml
 dora start dataflow.yml --detach
 
-# 6. watch the receiver
+# 5. watch the receiver
 RUN=$(dora list | awk '/Running/ {print $1}')
 dora logs $RUN receiver
 # [receiver] scan: n=360 fov=360.0° rate=10.0Hz depth=[3.000,7.000]m
@@ -79,34 +75,36 @@ dora logs $RUN receiver
 
 See [`examples/lidar-receiver/README.md`](examples/lidar-receiver/README.md) for the full walkthrough.
 
+The full set of public recipes is `just --list` (workspace tests, clippy, fmt, link-smoke, kit-smoke, clean). Per-developer cross-host helpers go in `justfile.local` (gitignored).
+
 ## Crates
 
-| Crate | Purpose |
-|---|---|
-| [`carb-sys`](crates/carb-sys/) | Raw FFI bindings to the NVIDIA Carbonite SDK (bindgen, env-driven build) |
-| [`isaac-sim-bridge`](crates/isaac-sim-bridge/) | C++ ↔ Rust bridge cdylib + consumer registry. The hub everything else plugs into. |
-| [`isaac-sim-arrow`](crates/isaac-sim-arrow/) | Apache Arrow conversion utilities for sensor data. Consumer-agnostic. |
-| [`isaac-sim-dora`](crates/isaac-sim-dora/) | dora-rs publisher adapter; rlib for in-process registration + cdylib for the bridge to load |
+| Crate                                          | Purpose                                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [`carb-sys`](crates/carb-sys/)                 | Raw FFI bindings to the NVIDIA Carbonite SDK (bindgen, env-driven build)                    |
+| [`isaac-sim-bridge`](crates/isaac-sim-bridge/) | C++ ↔ Rust bridge cdylib + consumer registry. The hub everything else plugs into.           |
+| [`isaac-sim-arrow`](crates/isaac-sim-arrow/)   | Apache Arrow conversion utilities for sensor data. Consumer-agnostic.                       |
+| [`isaac-sim-dora`](crates/isaac-sim-dora/)     | dora-rs publisher adapter; rlib for in-process registration + cdylib for the bridge to load |
 
 ## Examples
 
-| Example | Demonstrates |
-|---|---|
+| Example                                      | Demonstrates                                                      |
+| -------------------------------------------- | ----------------------------------------------------------------- |
 | [`lidar-receiver`](examples/lidar-receiver/) | Kit-as-dora-source + receiver dora node; full end-to-end pipeline |
 
 More planned (cross-host rerun viewer, camera, IMU). Each will live in its own self-contained `examples/<name>/` directory.
 
 ## Compatibility
 
-| | Tested on |
-|---|---|
-| Isaac Sim | 5.1.0-rc.19 (Linux x86_64) |
-| GPU / CUDA | NVIDIA RTX 4090, CUDA 12.6, driver 550.x |
-| OS | Ubuntu 24.04 (other modern Linux distros should work) |
-| Compiler | gcc 13.3, CMake 3.28 |
-| Rust | rustc 1.85+ (workspace `rust-version = "1.85"`) |
-| dora-rs | 0.5 (dora-cli, dora-node-api 0.5) |
-| Apache Arrow | 54 (workspace-pinned to match dora) |
+|              | Tested on                                             |
+| ------------ | ----------------------------------------------------- |
+| Isaac Sim    | 5.1.0-rc.19 (Linux x86_64)                            |
+| GPU / CUDA   | NVIDIA RTX 4090, CUDA 12.6, driver 550.x              |
+| OS           | Ubuntu 24.04 (other modern Linux distros should work) |
+| Compiler     | gcc 13.3, CMake 3.28                                  |
+| Rust         | rustc 1.85+ (workspace `rust-version = "1.85"`)       |
+| dora-rs      | 0.5 (dora-cli, dora-node-api 0.5)                     |
+| Apache Arrow | 54 (workspace-pinned to match dora)                   |
 
 The C++ plugin is Linux-only (Isaac Sim runs only on Linux/Windows). The Rust crates compile on macOS for development — `cargo check`, `cargo test` for the pure-Rust crates work locally; the bridge cdylib needs the Carb headers from a real Isaac Sim install.
 

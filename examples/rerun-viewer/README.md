@@ -46,14 +46,12 @@ the `RecordingStream` and registers the consumer.
 export ISAAC_SIM=/path/to/isaac-sim
 export ISAAC_SIM_RS=/path/to/this/repo
 cd $ISAAC_SIM_RS
-cargo build --release -p isaac-sim-bridge -p isaac-sim-rerun -p example-rerun-viewer
-cd cpp/omni.isaacsimrs.bridge && rm -rf build && mkdir build && cd build
-ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release cmake .. -Wno-dev
-ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release cmake --build . -j$(nproc)
+ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release just build
 ```
 
-The CMake post-build step copies `libexample_rerun_viewer.so` next to
-the plugin `.so`, which is where `launch-kit-rerun.sh` looks for it.
+`just build` drives both cargo and cmake; `libexample_rerun_viewer.so`
+lands next to the plugin in `cpp/omni.isaacsimrs.bridge/bin/`, which is
+where `launch-kit-rerun.sh` looks for it.
 
 ## Run
 
@@ -103,5 +101,5 @@ the relevant node's `env:` block — no Rust change required.
 - replace the blueprint closure with your own startup logic, e.g.
   logging a `rerun::blueprint::*` view definition.
 
-Rebuild with `cargo build -p example-rerun-viewer` and re-run the
-CMake post-build copy (or just rerun the full build sequence above).
+Rebuild with `just build` — cmake will refresh both the cdylib and
+the bin/ copy automatically.

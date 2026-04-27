@@ -44,10 +44,7 @@ Build the Rust cdylibs + the C++ bridge plugin:
 
 ```bash
 cd $ISAAC_SIM_RS
-cargo build --release -p isaac-sim-bridge -p isaac-sim-dora -p example-dora-lidar-receiver
-cd cpp/omni.isaacsimrs.bridge && rm -rf build && mkdir build && cd build
-ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release cmake .. -Wno-dev
-ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release cmake --build . -j$(nproc)
+ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release just build
 ```
 
 Launch dora:

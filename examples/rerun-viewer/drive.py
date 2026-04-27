@@ -1,4 +1,4 @@
-"""Drive 2D + 3D RTX LiDAR and an RGBD camera through the bridge.
+"""Drive 2D + 3D RTX LiDAR and an RGBD camera + camera info through the bridge.
 
 2D FlatScan uses og.Controller.connect because the FlatScan
 annotator's on_attach_callback wires SdOnNewRenderProductFrame
@@ -14,6 +14,12 @@ use independent annotator chains (LdrColorSDIsaacConvertRGBAToRGB and
 DistanceToImagePlaneSDIsaacPassthroughImagePtr respectively). They
 dispatch independently at the camera's render rate, mirroring NVIDIA's
 ROS2 image bridge.
+
+Camera info rides the PostProcessDispatchIsaacSimulationGate annotator
+chain — the same one NVIDIA's ROS2PublishCameraInfo writer uses. K is
+computed from the camera prim's focalLength / aperture / resolution
+once at startup and pinned as static inputs on the writer; timeStamp
+is auto-wired from IsaacReadSimulationTime via a NodeConnectionTemplate.
 """
 
 import omni.graph.core as og
@@ -156,7 +162,51 @@ camera_depth_writer = rep.WriterRegistry.get(camera_depth_writer_name)
 camera_depth_writer.initialize(sourceId=CAMERA_RGB_PRIM)
 camera_depth_writer.attach([camera_rgb.get_render_product_path()])
 
+# Camera info. Compute K once from the camera prim's pinhole intrinsics
+# (focalLength / aperture / resolution are all in mm and pixels;
+# fx_pixels = focalLength_mm / horizontalAperture_mm * width). We
+# hardcode r as identity and p as [K | 0] — monocular, no rectification.
+focal_length_mm = camera_rgb.get_focal_length()
+horizontal_aperture_mm = camera_rgb.get_horizontal_aperture()
+vertical_aperture_mm = camera_rgb.get_vertical_aperture()
+img_width, img_height = CAMERA_RGB_RESOLUTION
+fx = (focal_length_mm / horizontal_aperture_mm) * img_width
+fy = (focal_length_mm / vertical_aperture_mm) * img_height
+cx = img_width / 2.0
+cy = img_height / 2.0
+camera_info_k = [fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0]
+camera_info_r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+camera_info_p = [fx, 0.0, cx, 0.0, 0.0, fy, cy, 0.0, 0.0, 0.0, 1.0, 0.0]
+
+register_node_writer_with_telemetry(
+    name="PublishCameraInfoToRust",
+    node_type_id="omni.isaacsimrs.bridge.PublishCameraInfoToRust",
+    annotators=[
+        "PostProcessDispatchIsaacSimulationGate",
+        SyntheticData.NodeConnectionTemplate(
+            "IsaacReadSimulationTime",
+            attributes_mapping={"outputs:simulationTime": "inputs:timeStamp"},
+        ),
+    ],
+    category="omni.isaacsimrs.bridge",
+)
+camera_info_writer = rep.WriterRegistry.get("PublishCameraInfoToRust")
+camera_info_writer.initialize(
+    sourceId=CAMERA_RGB_PRIM,
+    frameId="sim_camera",
+    width=img_width,
+    height=img_height,
+    k=camera_info_k,
+    r=camera_info_r,
+    p=camera_info_p,
+    physicalDistortionCoefficients=[],
+    physicalDistortionModel="",
+    projectionType="pinhole",
+)
+camera_info_writer.attach([camera_rgb.get_render_product_path()])
+
 omni.timeline.get_timeline_interface().play()
 print(
-    "[og_drive] 2D FlatScan + 3D PointCloud + RGB + Depth wired; timeline playing"
+    "[og_drive] 2D FlatScan + 3D PointCloud + RGB + Depth + CameraInfo wired; "
+    "timeline playing"
 )

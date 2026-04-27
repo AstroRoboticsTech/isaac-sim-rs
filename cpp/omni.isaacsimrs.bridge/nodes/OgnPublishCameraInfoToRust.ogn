@@ -1,0 +1,28 @@
+{
+    "PublishCameraInfoToRust": {
+        "version": 1,
+        "language": "C++",
+        "description": "Forwards camera calibration metadata (intrinsics K, rectification R, projection P, distortion model + coefficients, image size, frame id, timestamp) to a Rust subscriber via FFI. Mirrors the input contract of NVIDIA's isaacsim.ros2.bridge.ROS2PublishCameraInfo so the same upstream graph (typically isaacsim.core.nodes.IsaacReadCameraInfo + a focal-length-to-K helper) wires into either node interchangeably. Set sourceId to the camera prim path so adapters can route per-source, in line with PublishCameraRgbToRust and PublishCameraDepthToRust. Unlike RGB/depth, this node is not auto-wired by Replicator's NodeWriter — it is connected manually downstream of the camera-info graph.",
+        "metadata": {
+            "categories": ["Sensor"],
+            "keywords": ["camera", "calibration", "intrinsics", "rust", "ffi"]
+        },
+        "inputs": {
+            "execIn": {"type": "execution", "description": "Trigger when a fresh CameraInfo snapshot is ready"},
+            "sourceId": {"type": "string", "default": "", "description": "Camera prim path (or any user-chosen identifier) used by adapters to route per-source; should match the sourceId on the paired RGB/depth publishers"},
+            "frameId": {"type": "string", "default": "sim_camera", "description": "Coordinate frame name for the camera; forwarded verbatim to adapters (rerun entity tail, ROS2 frame_id, etc.)"},
+            "timeStamp": {"type": "double", "default": 0.0, "description": "Capture time in seconds (simulation or system, chosen by the upstream graph)"},
+            "width": {"type": "uint", "default": 0, "description": "Image width in pixels"},
+            "height": {"type": "uint", "default": 0, "description": "Image height in pixels"},
+            "k": {"type": "double[]", "default": [], "description": "3x3 intrinsic matrix (row-major, 9 elements). Projects 3D camera-frame points to 2D pixel coordinates using focal lengths and principal point"},
+            "r": {"type": "double[]", "default": [], "description": "3x3 rectification matrix (row-major, 9 elements). Identity for monocular cameras; aligns the camera frame to the ideal rectified plane for stereo"},
+            "p": {"type": "double[]", "default": [], "description": "3x4 projection matrix (row-major, 12 elements). Includes baseline translation in the right-stereo case"},
+            "physicalDistortionCoefficients": {"type": "float[]", "default": [], "description": "Distortion coefficients matching the model named in physicalDistortionModel; empty if the camera prim does not specify a physical distortion"},
+            "physicalDistortionModel": {"type": "string", "default": "", "description": "Physical distortion model name (e.g. 'rational_polynomial', 'plumb_bob'). Substituted from NVIDIA's token-typed input because token attributes with empty string defaults are silently dropped from the OGN-generated Database.h, blocking compute scheduling"},
+            "projectionType": {"type": "string", "default": "", "description": "Projection type string (e.g. 'pinhole', 'fisheyePolynomial'). Substituted from NVIDIA's token-typed input for the same OGN-codegen reason as physicalDistortionModel"}
+        },
+        "outputs": {
+            "execOut": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
+        }
+    }
+}

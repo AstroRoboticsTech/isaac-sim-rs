@@ -16,9 +16,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use isaac_sim_bridge::{
-    register_lidar_pointcloud_consumer, LidarPointCloudMeta,
-};
+use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloudMeta};
 use serde_json::Value;
 
 fn workspace_root() -> PathBuf {
@@ -98,7 +96,11 @@ fn pointcloud_fixtures_replay_through_dispatch() {
         assert_eq!(channels, 3, "fixture channels must be 3 (XYZ)");
 
         let n_floats = raw.len() / 4;
-        assert_eq!(n_floats % 3, 0, "fixture {bin:?} not a multiple of 3 floats");
+        assert_eq!(
+            n_floats % 3,
+            0,
+            "fixture {bin:?} not a multiple of 3 floats"
+        );
         let n_points = n_floats / 3;
 
         // Reinterpret bytes as &[f32]. Safe because stride=4 and
@@ -128,9 +130,12 @@ fn pointcloud_fixtures_replay_through_dispatch() {
 fn fixture_meta_json_well_formed() {
     let fixtures = list_fixtures("lidar_");
     for (_bin, meta_path) in fixtures {
-        let v: Value = serde_json::from_slice(&fs::read(&meta_path).expect("read"))
-            .expect("parse meta json");
-        assert!(v.get("annotator").is_some(), "{meta_path:?}: missing annotator");
+        let v: Value =
+            serde_json::from_slice(&fs::read(&meta_path).expect("read")).expect("parse meta json");
+        assert!(
+            v.get("annotator").is_some(),
+            "{meta_path:?}: missing annotator"
+        );
         assert!(
             v.get("isaac_version").is_some(),
             "{meta_path:?}: missing isaac_version"

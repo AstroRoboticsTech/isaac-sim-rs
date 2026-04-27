@@ -2,13 +2,14 @@
     "PublishLidarFlatScanToRust": {
         "version": 1,
         "language": "C++",
-        "description": "Forwards a 2D RTX LiDAR flat scan (linear depths + intensities + scan metadata) to a Rust subscriber via FFI. Wire the inputs from IsaacComputeRTXLidarFlatScan outputs.",
+        "description": "Forwards a 2D RTX LiDAR flat scan (linear depths + intensities + scan metadata) to a Rust subscriber via FFI. Wire the inputs from IsaacComputeRTXLidarFlatScan outputs. Set sourceId to the LiDAR prim path so downstream consumers can route by source.",
         "metadata": {
             "categories": ["Sensor"],
             "keywords": ["rtx", "lidar", "flatscan", "rust", "ffi"]
         },
         "inputs": {
             "exec": {"type": "execution", "description": "Trigger when a full scan is ready"},
+            "sourceId": {"type": "string", "description": "LiDAR prim path (or any user-chosen identifier) used by adapters to route per-source", "default": ""},
             "linearDepthData": {"type": "float[]", "memoryType": "cpu", "description": "Linear depths in metres, ordered by increasing azimuth"},
             "intensitiesData": {"type": "uchar[]", "memoryType": "cpu", "description": "Intensities in [0,255], ordered by increasing azimuth"},
             "horizontalFov": {"type": "float", "description": "Horizontal field of view in degrees", "default": 0.0},

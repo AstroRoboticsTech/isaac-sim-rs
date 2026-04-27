@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+find_package(CUDAToolkit REQUIRED)
+
 if(NOT DEFINED ENV{ISAAC_SIM_PATH})
     message(FATAL_ERROR "ISAAC_SIM_PATH env var must point to the Isaac Sim install root (the directory containing kit/dev/include)")
 endif()
@@ -79,7 +81,7 @@ target_include_directories(omni_isaacsimrs_bridge PRIVATE
 
 target_link_directories(omni_isaacsimrs_bridge PRIVATE "${USD_ROOT}/lib")
 
-target_link_libraries(omni_isaacsimrs_bridge PRIVATE dl "${RUST_CDYLIB_PATH}")
+target_link_libraries(omni_isaacsimrs_bridge PRIVATE dl "${RUST_CDYLIB_PATH}" CUDA::cudart)
 
 add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

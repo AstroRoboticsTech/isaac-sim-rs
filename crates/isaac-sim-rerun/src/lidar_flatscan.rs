@@ -45,7 +45,10 @@ pub fn register_rerun_lidar_flatscan_publisher(
     source: String,
     entity_path: String,
 ) {
-    register_lidar_flatscan_consumer(move |scan, intensities, meta| {
+    register_lidar_flatscan_consumer(move |src, scan, intensities, meta| {
+        if src != source {
+            return;
+        }
         if let Err(e) = log_lidar_flatscan(&rec, &entity_path, scan, intensities, meta) {
             log::warn!("[isaac-sim-rerun] log failed for '{source}' -> '{entity_path}': {e}");
         }

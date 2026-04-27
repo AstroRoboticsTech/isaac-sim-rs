@@ -13,17 +13,17 @@ type BlueprintFn = Box<dyn FnOnce(&RecordingStream) -> eyre::Result<()>>;
 
 /// Pure config until `.run()`; no I/O happens earlier.
 ///
+/// Each `with_*` call registers a source-filtered consumer that logs only
+/// when the dispatched `source` matches; multiple sensors of the same
+/// type co-exist by chaining more `with_*` calls.
+///
 /// ```no_run
 /// use isaac_sim_rerun::Viewer;
 ///
 /// Viewer::new()
 ///     .with_grpc_addr("192.168.1.10:9876")
-///     .with_lidar_flatscan("/World/Lidar2D", "scene/lidar/flatscan")
+///     .with_lidar_flatscan("/World/Carter/lidar_2d", "scene/lidar/flatscan")
 ///     .with_lidar_pointcloud("/World/Carter/.../PandarXT", "scene/lidar/pointcloud")
-///     .with_blueprint(|rec| {
-///         rec.log_static("scene/lidar", &rerun::TextDocument::new("hello"))?;
-///         Ok(())
-///     })
 ///     .run()?;
 /// # Ok::<(), eyre::Report>(())
 /// ```

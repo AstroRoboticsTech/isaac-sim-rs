@@ -15,12 +15,25 @@ pub extern "C" fn isaac_sim_rerun_init() -> i32 {
 
 fn try_init() -> eyre::Result<()> {
     Viewer::new()
-        .with_lidar_flatscan("/World/LidarGraph/LidarFwd", "scene/lidar/flatscan")
+        .with_lidar_flatscan(
+            "/Root/World/Carter/chassis_link/lidar_2d",
+            "scene/lidar/flatscan",
+        )
+        .with_lidar_pointcloud(
+            "/Root/World/Carter/chassis_link/sensors/XT_32/PandarXT_32_10hz",
+            "scene/lidar/pointcloud",
+        )
         .with_blueprint(|rec| {
             rec.log_static(
                 "scene/lidar/flatscan",
                 &rerun::TextDocument::new(
-                    "RTX LiDAR flat scan from Isaac Sim, projected planar (single row).",
+                    "2D RTX LiDAR (Example_Rotary_2D) mounted on Carter chassis.",
+                ),
+            )?;
+            rec.log_static(
+                "scene/lidar/pointcloud",
+                &rerun::TextDocument::new(
+                    "3D RTX LiDAR (PandarXT_32_10hz) — Carter's built-in sensor, 32-channel.",
                 ),
             )?;
             Ok(())

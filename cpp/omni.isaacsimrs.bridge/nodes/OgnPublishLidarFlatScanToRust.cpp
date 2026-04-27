@@ -23,10 +23,12 @@ public:
             db.inputs.rotationRate(),
         };
 
+        const std::string& source = db.inputs.sourceId();
+        rust::Str source_id{ source.data(), source.size() };
         rust::Slice<const float> scan_slice{ depths.data(), depths.size() };
         rust::Slice<const std::uint8_t> intensity_slice{ intensities.data(), intensities.size() };
 
-        isaacsimrs::forward_lidar_flatscan(scan_slice, intensity_slice, meta);
+        isaacsimrs::forward_lidar_flatscan(source_id, scan_slice, intensity_slice, meta);
 
         db.outputs.exec() = kExecutionAttributeStateEnabled;
         return true;

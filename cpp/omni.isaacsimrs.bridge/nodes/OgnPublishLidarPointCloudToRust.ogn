@@ -2,25 +2,22 @@
     "PublishLidarPointCloudToRust": {
         "version": 1,
         "language": "C++",
-        "description": "Forwards a 3D RTX LiDAR point cloud (per-point azimuth + elevation + distance + intensity in spherical coords on CPU) to a Rust subscriber via FFI. Wire the inputs from IsaacCreateRTXLidarScanBuffer outputs (or its annotator wrappers like IsaacExtractRTXSensorPointCloudNoAccumulator). GPU-resident buffers are not yet supported; assert cudaDeviceIndex == -1.",
+        "description": "Forwards a 3D RTX LiDAR point cloud (packed XYZ float32, host-resident) to a Rust subscriber via FFI. Designed to be auto-wired by Replicator's NodeWriter framework against the IsaacExtractRTXSensorPointCloudNoAccumulator annotator: input names match the annotator's outputs (dataPtr, bufferSize, cudaDeviceIndex, width, height) so register_node_writer_with_telemetry connects them by name. Set sourceId to the LiDAR prim path so downstream consumers can route by source. GPU-resident buffers not supported (cudaDeviceIndex must be -1).",
         "metadata": {
             "categories": ["Sensor"],
             "keywords": ["rtx", "lidar", "pointcloud", "rust", "ffi"]
         },
         "inputs": {
-            "exec": {"type": "execution", "description": "Trigger when a point cloud is ready"},
-            "azimuthPtr": {"type": "uint64", "default": 0, "description": "Pointer to per-point azimuth (rad), float32, host-resident"},
-            "azimuthBufferSize": {"type": "uint64", "default": 0, "description": "Azimuth buffer size in bytes"},
-            "elevationPtr": {"type": "uint64", "default": 0, "description": "Pointer to per-point elevation (rad), float32, host-resident"},
-            "elevationBufferSize": {"type": "uint64", "default": 0, "description": "Elevation buffer size in bytes"},
-            "distancePtr": {"type": "uint64", "default": 0, "description": "Pointer to per-point distance (m), float32, host-resident"},
-            "distanceBufferSize": {"type": "uint64", "default": 0, "description": "Distance buffer size in bytes"},
-            "intensityPtr": {"type": "uint64", "default": 0, "description": "Pointer to per-point intensity [0,1], float32, host-resident"},
-            "intensityBufferSize": {"type": "uint64", "default": 0, "description": "Intensity buffer size in bytes"},
-            "cudaDeviceIndex": {"type": "int", "default": -1, "description": "CUDA device index of the buffers; must be -1 (host) for now"}
+            "execIn": {"type": "execution", "description": "Trigger when a point cloud is ready (Replicator NodeWriter wires this from the annotator's outputs:exec via the writer's sync gate)"},
+            "sourceId": {"type": "string", "description": "LiDAR prim path (or any user-chosen identifier) used by adapters to route per-source", "default": ""},
+            "dataPtr": {"type": "uint64", "default": 0, "description": "Pointer to packed XYZ float32 buffer (host-resident); auto-wired from IsaacCreateRTXLidarScanBuffer.outputs:dataPtr"},
+            "bufferSize": {"type": "uint64", "default": 0, "description": "Buffer size in bytes; num_points = bufferSize / (3 * sizeof(float))"},
+            "cudaDeviceIndex": {"type": "int", "default": -1, "description": "CUDA device index of the buffer; must be -1 (host) for now"},
+            "width": {"type": "uint", "default": 0, "description": "Buffer width as published by the annotator (informational; not used to derive count)"},
+            "height": {"type": "uint", "default": 1, "description": "Buffer height (always 1 for 1D point clouds)"}
         },
         "outputs": {
-            "exec": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
+            "execOut": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
         }
     }
 }

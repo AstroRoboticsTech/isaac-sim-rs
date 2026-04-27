@@ -8,15 +8,17 @@ use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloudMeta};
 
 pub fn register_dora_lidar_pointcloud_publisher(
     node: Arc<Mutex<DoraNode>>,
+    source: String,
     output_id: impl Into<String>,
 ) {
     let output: DataId = output_id.into().into();
 
-    register_lidar_pointcloud_consumer(move |azimuth, elevation, distance, intensity, meta| {
-        if let Err(e) = publish(
-            &node, &output, azimuth, elevation, distance, intensity, meta,
-        ) {
-            log::warn!("[isaac-sim-dora] lidar_pointcloud publish failed: {e}");
+    register_lidar_pointcloud_consumer(move |src, points, meta| {
+        if src != source {
+            return;
+        }
+        if let Err(e) = publish(&node, &output, points, meta) {
+            log::warn!("[isaac-sim-dora] lidar_pointcloud publish failed for '{source}': {e}");
         }
     });
 }
@@ -24,18 +26,14 @@ pub fn register_dora_lidar_pointcloud_publisher(
 fn publish(
     node: &Mutex<DoraNode>,
     output: &DataId,
-    azimuth: &[f32],
-    elevation: &[f32],
-    distance: &[f32],
-    intensity: &[f32],
+    points: &[f32],
     meta: &LidarPointCloudMeta,
 ) -> eyre::Result<()> {
     let pc = LidarPointCloud {
-        azimuth,
-        elevation,
-        distance,
-        intensity,
+        points,
         num_points: meta.num_points,
+        width: meta.width,
+        height: meta.height,
     };
     let batch = to_record_batch(&pc)?;
     let array = StructArray::from(batch);

@@ -1,45 +1,61 @@
 #include "OgnPublishLidarPointCloudToRustDatabase.h"
 #include "isaac-sim-bridge/src/lib.rs.h"
+#include <cuda_runtime.h>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 class OgnPublishLidarPointCloudToRust
 {
 public:
     static bool compute(OgnPublishLidarPointCloudToRustDatabase& db)
     {
-        if (db.inputs.cudaDeviceIndex() != -1) {
-            // GPU-resident buffers not yet supported; would need cudaMemcpy.
+        const auto cuda_idx = db.inputs.cudaDeviceIndex();
+        const auto data_ptr = db.inputs.dataPtr();
+        const auto buffer_size = db.inputs.bufferSize();
+        if (data_ptr == 0 || buffer_size == 0) {
             return false;
         }
 
-        const auto azimuth_ptr = db.inputs.azimuthPtr();
-        const auto azimuth_size = db.inputs.azimuthBufferSize();
-        if (azimuth_ptr == 0 || azimuth_size == 0) {
+        constexpr std::size_t kStride = 3 * sizeof(float);
+        if (buffer_size % kStride != 0) {
             return false;
         }
+        const auto num_points = static_cast<std::size_t>(buffer_size / kStride);
+        const auto num_floats = num_points * 3;
 
-        const auto num_points = static_cast<std::size_t>(azimuth_size / sizeof(float));
+        const float* host_ptr = nullptr;
+        static thread_local std::vector<float> staging;
 
-        auto make_slice = [num_points](std::uint64_t ptr, std::uint64_t size) {
-            const auto n = static_cast<std::size_t>(size / sizeof(float));
-            if (ptr == 0 || n == 0 || n != num_points) {
-                return rust::Slice<const float>{};
+        if (cuda_idx == -1) {
+            host_ptr = reinterpret_cast<const float*>(data_ptr);
+        } else {
+            staging.resize(num_floats);
+            const auto rc = cudaMemcpy(
+                staging.data(),
+                reinterpret_cast<const void*>(data_ptr),
+                buffer_size,
+                cudaMemcpyDeviceToHost);
+            if (rc != cudaSuccess) {
+                return false;
             }
-            return rust::Slice<const float>{ reinterpret_cast<const float*>(ptr), n };
-        };
+            host_ptr = staging.data();
+        }
 
-        auto az_slice = make_slice(azimuth_ptr, azimuth_size);
-        auto el_slice = make_slice(db.inputs.elevationPtr(), db.inputs.elevationBufferSize());
-        auto dist_slice = make_slice(db.inputs.distancePtr(), db.inputs.distanceBufferSize());
-        auto intens_slice = make_slice(db.inputs.intensityPtr(), db.inputs.intensityBufferSize());
+        rust::Slice<const float> points{ host_ptr, num_floats };
+
+        const std::string& source = db.inputs.sourceId();
+        rust::Str source_id{ source.data(), source.size() };
 
         isaacsimrs::LidarPointCloudMeta meta{
             static_cast<std::int32_t>(num_points),
+            static_cast<std::int32_t>(db.inputs.width()),
+            static_cast<std::int32_t>(db.inputs.height()),
         };
-        isaacsimrs::forward_lidar_pointcloud(az_slice, el_slice, dist_slice, intens_slice, meta);
 
-        db.outputs.exec() = kExecutionAttributeStateEnabled;
+        isaacsimrs::forward_lidar_pointcloud(source_id, points, meta);
+
+        db.outputs.execOut() = kExecutionAttributeStateEnabled;
         return true;
     }
 };

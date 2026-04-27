@@ -1,10 +1,15 @@
+mod articulation;
 mod channel;
 mod demo;
 mod lidar;
 mod lifecycle;
+mod producer;
 mod sensor;
 mod source;
 
+pub use articulation::cmd_vel::{
+    cmd_vel_producer_count, register_cmd_vel_producer, CmdVelChannel,
+};
 pub use lidar::flatscan::{
     dispatch_lidar_flatscan, lidar_flatscan_consumer_count, register_lidar_flatscan_consumer,
     LidarFlatScan,
@@ -13,6 +18,7 @@ pub use lidar::pointcloud::{
     dispatch_lidar_pointcloud, lidar_pointcloud_consumer_count, register_lidar_pointcloud_consumer,
     LidarPointCloud,
 };
+pub use producer::{ProducerRegistry, ProducerSlot};
 pub use sensor::Sensor;
 pub use source::SourceFilter;
 
@@ -36,6 +42,17 @@ mod ffi {
         height: i32,
     }
 
+    #[derive(Default, Clone, Copy)]
+    struct CmdVel {
+        linear_x: f32,
+        linear_y: f32,
+        linear_z: f32,
+        angular_x: f32,
+        angular_y: f32,
+        angular_z: f32,
+        timestamp_ns: i64,
+    }
+
     extern "Rust" {
         fn init();
         fn double_value(x: i32) -> i32;
@@ -46,11 +63,13 @@ mod ffi {
             meta: &LidarFlatScanMeta,
         );
         fn forward_lidar_pointcloud(source_id: &str, points: &[f32], meta: &LidarPointCloudMeta);
+        fn poll_cmd_vel(target_id: &str, out: &mut CmdVel) -> bool;
     }
 }
 
-pub use ffi::{LidarFlatScanMeta, LidarPointCloudMeta};
+pub use ffi::{CmdVel, LidarFlatScanMeta, LidarPointCloudMeta};
 
+use articulation::cmd_vel::poll_cmd_vel;
 use demo::double_value;
 use lidar::flatscan::forward_lidar_flatscan;
 use lidar::pointcloud::forward_lidar_pointcloud;

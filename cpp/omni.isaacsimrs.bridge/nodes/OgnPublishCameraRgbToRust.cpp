@@ -47,9 +47,17 @@ struct GpuStaging
                 event = nullptr;
             }
         }
-        if (auto rc = cudaStreamCreate(&stream); rc != cudaSuccess) {
+        // cudaStreamNonBlocking — without this flag, streams created
+        // via the legacy API implicitly synchronise with the default
+        // (NULL) stream. The RTX renderer queues all of its work on
+        // the default stream (raycast, denoise, DLSS, RGBA->RGB
+        // convert), so a default-flag staging stream's `cudaMemcpyAsync`
+        // would wait for the entire RTX pipeline tail before launching
+        // — turning the OG-thread `cudaEventSynchronize` below into a
+        // ms-scale stall that knocks LiDAR off its 60 Hz cadence.
+        if (auto rc = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking); rc != cudaSuccess) {
             CARB_LOG_ERROR(
-                "[OgnPublishCameraRgbToRust] cudaStreamCreate failed: %s",
+                "[OgnPublishCameraRgbToRust] cudaStreamCreateWithFlags failed: %s",
                 cudaGetErrorString(rc));
             return false;
         }

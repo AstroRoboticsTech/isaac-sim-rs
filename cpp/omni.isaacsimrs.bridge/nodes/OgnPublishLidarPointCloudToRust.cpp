@@ -54,9 +54,16 @@ struct GpuStaging
                 event = nullptr;
             }
         }
-        if (auto rc = cudaStreamCreate(&stream); rc != cudaSuccess) {
+        // See OgnPublishCameraRgbToRust for the rationale: cudaStreamCreate
+        // without cudaStreamNonBlocking creates a stream that implicitly
+        // syncs with the default stream, defeating the async memcpy intent.
+        // Harmless today because the LiDAR PointCloud annotator publishes
+        // host-resident buffers (cudaDeviceIndex == -1), so the CUDA branch
+        // never runs — but the bug would surface immediately if a future
+        // annotator ships GPU-resident points. Fix proactively.
+        if (auto rc = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking); rc != cudaSuccess) {
             CARB_LOG_ERROR(
-                "[OgnPublishLidarPointCloudToRust] cudaStreamCreate failed: %s",
+                "[OgnPublishLidarPointCloudToRust] cudaStreamCreateWithFlags failed: %s",
                 cudaGetErrorString(rc));
             return false;
         }

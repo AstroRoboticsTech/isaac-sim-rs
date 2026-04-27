@@ -1,6 +1,8 @@
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use arc_swap::ArcSwapOption;
+
+type Slots<T> = Mutex<Vec<(String, Arc<ProducerSlot<T>>)>>;
 
 /// Lock-free single-slot store for a "latest-wins" producer.
 ///
@@ -21,10 +23,10 @@ impl<T> ProducerSlot<T> {
     }
 
     pub fn publish(&self, value: T) {
-        self.slot.store(Some(std::sync::Arc::new(value)));
+        self.slot.store(Some(Arc::new(value)));
     }
 
-    pub fn latest(&self) -> Option<std::sync::Arc<T>> {
+    pub fn latest(&self) -> Option<Arc<T>> {
         self.slot.load_full()
     }
 
@@ -43,7 +45,7 @@ impl<T> Default for ProducerSlot<T> {
 /// (or controller target) gets its own keyed slot so multiple targets
 /// can co-exist and the C++ poll path looks up by target_id.
 pub struct ProducerRegistry<T: 'static> {
-    inner: OnceLock<Mutex<Vec<(String, std::sync::Arc<ProducerSlot<T>>)>>>,
+    inner: OnceLock<Slots<T>>,
 }
 
 impl<T: 'static> ProducerRegistry<T> {
@@ -53,35 +55,41 @@ impl<T: 'static> ProducerRegistry<T> {
         }
     }
 
-    fn slots(&self) -> &Mutex<Vec<(String, std::sync::Arc<ProducerSlot<T>>)>> {
+    fn slots(&self) -> &Slots<T> {
         self.inner.get_or_init(|| Mutex::new(Vec::new()))
     }
 
     /// Register (or fetch) the producer slot for `target_id`. Returns
     /// the Arc'd handle so the caller can `publish` from any thread.
-    pub fn register(&self, target_id: impl Into<String>) -> std::sync::Arc<ProducerSlot<T>> {
+    pub fn register(&self, target_id: impl Into<String>) -> Arc<ProducerSlot<T>> {
         let target_id = target_id.into();
         let mut guard = self.slots().lock().unwrap();
         if let Some((_, slot)) = guard.iter().find(|(t, _)| t == &target_id) {
-            return std::sync::Arc::clone(slot);
+            return Arc::clone(slot);
         }
-        let slot = std::sync::Arc::new(ProducerSlot::new());
-        guard.push((target_id, std::sync::Arc::clone(&slot)));
+        let slot = Arc::new(ProducerSlot::new());
+        guard.push((target_id, Arc::clone(&slot)));
         slot
     }
 
     /// Look up the producer slot for `target_id` without registering one.
     /// Used by the C++ poll path to get the latest published value.
-    pub fn lookup(&self, target_id: &str) -> Option<std::sync::Arc<ProducerSlot<T>>> {
+    pub fn lookup(&self, target_id: &str) -> Option<Arc<ProducerSlot<T>>> {
         let guard = self.slots().lock().unwrap();
         guard
             .iter()
             .find(|(t, _)| t == target_id)
-            .map(|(_, s)| std::sync::Arc::clone(s))
+            .map(|(_, s)| Arc::clone(s))
     }
 
     pub fn count(&self) -> usize {
         self.slots().lock().unwrap().len()
+    }
+}
+
+impl<T: 'static> Default for ProducerRegistry<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -108,9 +116,9 @@ mod tests {
         let b = reg.register("/Robot/B");
         let a_again = reg.register("/Robot/A");
         // Same target → same slot (Arc-equal).
-        assert!(std::sync::Arc::ptr_eq(&a, &a_again));
+        assert!(Arc::ptr_eq(&a, &a_again));
         // Different target → different slot.
-        assert!(!std::sync::Arc::ptr_eq(&a, &b));
+        assert!(!Arc::ptr_eq(&a, &b));
 
         a.publish(1);
         b.publish(2);

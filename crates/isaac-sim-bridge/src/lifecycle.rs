@@ -14,29 +14,6 @@ pub fn init() {
     });
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::lidar::flatscan::lidar_flatscan_consumer_count;
-    use crate::lidar::pointcloud::lidar_pointcloud_consumer_count;
-
-    #[test]
-    fn init_is_idempotent() {
-        // First call may or may not actually register (depends on whether
-        // another test already ran init). Capture counts AFTER first call,
-        // call again, and assert nothing was double-registered.
-        init();
-        let flatscan_after_first = lidar_flatscan_consumer_count();
-        let pointcloud_after_first = lidar_pointcloud_consumer_count();
-
-        init();
-        init();
-
-        assert_eq!(lidar_flatscan_consumer_count(), flatscan_after_first);
-        assert_eq!(lidar_pointcloud_consumer_count(), pointcloud_after_first);
-    }
-}
-
 fn register_default_consumers() {
     register_lidar_flatscan_consumer(|src, scan, intensities, meta| {
         let depth_min = scan.iter().copied().fold(f32::INFINITY, f32::min);
@@ -76,4 +53,27 @@ fn register_default_consumers() {
             zmax
         );
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lidar::flatscan::lidar_flatscan_consumer_count;
+    use crate::lidar::pointcloud::lidar_pointcloud_consumer_count;
+
+    #[test]
+    fn init_is_idempotent() {
+        // First call may or may not actually register (depends on whether
+        // another test already ran init). Capture counts AFTER first call,
+        // call again, and assert nothing was double-registered.
+        init();
+        let flatscan_after_first = lidar_flatscan_consumer_count();
+        let pointcloud_after_first = lidar_pointcloud_consumer_count();
+
+        init();
+        init();
+
+        assert_eq!(lidar_flatscan_consumer_count(), flatscan_after_first);
+        assert_eq!(lidar_pointcloud_consumer_count(), pointcloud_after_first);
+    }
 }

@@ -52,7 +52,7 @@ fn each_node(ogn: &Value) -> impl Iterator<Item = (&String, &Value)> {
         .filter(|(k, _)| !k.starts_with('$'))
 }
 
-fn each_input<'a>(node: &'a Value) -> impl Iterator<Item = (&'a String, &'a Value)> {
+fn each_input(node: &Value) -> impl Iterator<Item = (&String, &Value)> {
     node.get("inputs")
         .and_then(Value::as_object)
         .into_iter()

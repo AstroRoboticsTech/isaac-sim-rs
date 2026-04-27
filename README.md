@@ -108,6 +108,8 @@ More planned (cross-host rerun viewer, camera, IMU). Each will live in its own s
 
 The C++ plugin is Linux-only (Isaac Sim runs only on Linux/Windows). The Rust crates compile on macOS for development — `cargo check`, `cargo test` for the pure-Rust crates work locally; the bridge cdylib needs the Carb headers from a real Isaac Sim install.
 
+**One-time build cost (Linux): the first `just build` fetches USD via NVIDIA's packman (~3.8 GB extracted into `cpp/omni.isaacsimrs.bridge/build/deps/`).** USD is needed only for headers — OmniGraph's `omni/graph/core/StringUtils.h` includes `pxr/base/tf/token.h` transitively, so any cpp file pulled into the plugin via the OGN-generated `*Database.h` chain ends up parsing pxr headers at compile time. The plugin's `.so` does **not** link against any `libusd_*` / `libpxr_*` (verified via `readelf -d`). The fetch is cached after the first run; subsequent builds skip it.
+
 ## License
 
 [Mozilla Public License 2.0](LICENSE). File-level copyleft: use this SDK in any project (commercial, proprietary, open-source). Modifications to source files in this repository must be released under MPL-2.0. See [LICENSE](LICENSE) for full terms.

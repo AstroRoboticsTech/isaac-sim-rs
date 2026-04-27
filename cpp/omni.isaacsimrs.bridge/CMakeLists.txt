@@ -59,6 +59,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(Ogn)
 include(Packman)
 
+# USD headers come in via Packman because OmniGraph's
+# `omni/graph/core/StringUtils.h` (in kit/dev/include) includes
+# `pxr/base/tf/token.h` transitively. The plugin .so does NOT link
+# against any libusd_* / libpxr_* — confirmed via `readelf -d ... |
+# grep NEEDED`. So we use ${USD_ROOT}/include below but skip the
+# corresponding lib directory.
 packman_pull_usd(USD_ROOT)
 
 file(GLOB OGN_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/nodes/*.ogn")
@@ -115,10 +121,6 @@ target_include_directories(omni_isaacsimrs_bridge PRIVATE
     "${USD_ROOT}/include"
     "${CARGO_TARGET_DIR}/cxxbridge"
     "${OGN_GEN_DIR}"
-)
-
-target_link_directories(omni_isaacsimrs_bridge PRIVATE
-    "${USD_ROOT}/lib"
 )
 
 # Link by absolute path so cmake tracks the cdylib's mtime as a link

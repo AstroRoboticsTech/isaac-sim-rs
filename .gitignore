@@ -13,9 +13,10 @@ target
 # Contains mutation testing data
 **/mutants.out*/
 
-# CMake build output for cpp/* extensions
+# CMake build output for cpp/* extensions and tests
 cpp/**/build/
 cpp/**/bin/
+tests/cpp/**/build/
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
@@ -24,3 +25,4 @@ cpp/**/bin/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 ROADMAP.md
+AUDIT.md

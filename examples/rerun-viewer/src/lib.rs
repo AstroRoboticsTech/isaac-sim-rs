@@ -8,12 +8,13 @@
 //! the pinhole frustum. Depth is intentionally on a sibling entity
 //! and gets its own panel without a frustum.
 
-use isaac_sim_bridge::{CameraDepth, CameraInfo, CameraRgb, LidarFlatScan, LidarPointCloud};
+use isaac_sim_bridge::{CameraDepth, CameraInfo, CameraRgb, Imu, LidarFlatScan, LidarPointCloud};
 use isaac_sim_rerun::Viewer;
 
 const LIDAR_2D_PRIM: &str = "/Root/World/Carter/chassis_link/lidar_2d";
 const LIDAR_3D_PRIM: &str = "/Root/World/Carter/chassis_link/sensors/XT_32/PandarXT_32_10hz";
 const CAMERA_PRIM: &str = "/Root/World/Carter/chassis_link/camera_rgb";
+const IMU_PRIM: &str = "/Root/World/Carter/chassis_link/imu";
 
 #[unsafe(no_mangle)]
 pub extern "C" fn isaac_sim_rerun_init() -> i32 {
@@ -35,5 +36,6 @@ fn try_init() -> eyre::Result<()> {
         .with_source(CameraRgb, CAMERA_PRIM, "camera_rgb")
         .with_source(CameraInfo, CAMERA_PRIM, "camera_rgb")
         .with_source(CameraDepth, CAMERA_PRIM, "camera_depth")
+        .with_source(Imu, IMU_PRIM, "imu")
         .run()
 }

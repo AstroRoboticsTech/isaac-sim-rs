@@ -1,0 +1,23 @@
+{
+    "PublishImuToRust": {
+        "version": 1,
+        "language": "C++",
+        "description": "Forwards IMU readings (linear acceleration m/s^2, angular velocity rad/s, orientation quaternion) to a Rust subscriber via FFI. Mirrors NVIDIA's isaacsim.ros2.bridge.ROS2PublishImu input contract so the standard upstream IsaacReadIMU graph wires into either node interchangeably. Set sourceId to the IMU prim path so adapters can route per-source. Unlike the camera nodes, this is not auto-wired by Replicator — IMU samples physics state per simulation step, not per render frame, so the user manually connects IsaacReadIMU's outputs (and execOut) into this node.",
+        "metadata": {
+            "categories": ["Sensor"],
+            "keywords": ["imu", "physics", "rust", "ffi"]
+        },
+        "inputs": {
+            "execIn": {"type": "execution", "description": "Trigger when an IMU sample is ready (typically wired from IsaacReadIMU.outputs:execOut)"},
+            "sourceId": {"type": "string", "default": "", "description": "IMU prim path (or any user-chosen identifier) used by adapters to route per-source"},
+            "frameId": {"type": "string", "default": "sim_imu", "description": "Coordinate frame name for the IMU; forwarded verbatim to adapters (rerun entity tail, ROS2 frame_id, etc.)"},
+            "linearAcceleration": {"type": "vectord[3]", "default": [0.0, 0.0, 0.0], "description": "Linear acceleration (m/s^2) in the IMU frame. Wire from IsaacReadIMU.outputs:linAcc"},
+            "angularVelocity": {"type": "vectord[3]", "default": [0.0, 0.0, 0.0], "description": "Angular velocity (rad/s) in the IMU frame. Wire from IsaacReadIMU.outputs:angVel"},
+            "orientation": {"type": "quatd[4]", "default": [1.0, 0.0, 0.0, 0.0], "description": "Sensor orientation as a quaternion (w, x, y, z). Wire from IsaacReadIMU.outputs:orientation"},
+            "timeStamp": {"type": "double", "default": 0.0, "description": "Capture time in seconds. Wire from IsaacReadIMU.outputs:sensorTime or IsaacReadSimulationTime.outputs:simulationTime"}
+        },
+        "outputs": {
+            "execOut": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
+        }
+    }
+}

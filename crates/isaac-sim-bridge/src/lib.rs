@@ -2,6 +2,7 @@ mod articulation;
 mod camera;
 mod channel;
 mod demo;
+mod imu;
 mod lidar;
 mod lifecycle;
 mod producer;
@@ -19,6 +20,7 @@ pub use camera::info::{
 pub use camera::rgb::{
     camera_rgb_consumer_count, dispatch_camera_rgb, register_camera_rgb_consumer, CameraRgb,
 };
+pub use imu::{dispatch_imu, imu_consumer_count, register_imu_consumer, Imu};
 pub use lidar::flatscan::{
     dispatch_lidar_flatscan, lidar_flatscan_consumer_count, register_lidar_flatscan_consumer,
     LidarFlatScan,
@@ -83,6 +85,21 @@ mod ffi {
         timestamp_ns: i64,
     }
 
+    #[derive(Clone, Copy)]
+    struct ImuMeta {
+        lin_acc_x: f64,
+        lin_acc_y: f64,
+        lin_acc_z: f64,
+        ang_vel_x: f64,
+        ang_vel_y: f64,
+        ang_vel_z: f64,
+        orientation_w: f64,
+        orientation_x: f64,
+        orientation_y: f64,
+        orientation_z: f64,
+        timestamp_ns: i64,
+    }
+
     #[derive(Default, Clone, Copy)]
     struct CmdVel {
         linear_x: f32,
@@ -117,18 +134,21 @@ mod ffi {
             distortion: &[f32],
             meta: &CameraInfoMeta,
         );
+        fn forward_imu(source_id: &str, frame_id: &str, meta: &ImuMeta);
         fn poll_cmd_vel(target_id: &str, out: &mut CmdVel) -> bool;
     }
 }
 
 pub use ffi::{
-    CameraDepthMeta, CameraInfoMeta, CameraRgbMeta, CmdVel, LidarFlatScanMeta, LidarPointCloudMeta,
+    CameraDepthMeta, CameraInfoMeta, CameraRgbMeta, CmdVel, ImuMeta, LidarFlatScanMeta,
+    LidarPointCloudMeta,
 };
 
 use articulation::cmd_vel::poll_cmd_vel;
 use camera::depth::forward_camera_depth;
 use camera::info::forward_camera_info;
 use camera::rgb::forward_camera_rgb;
+use imu::forward_imu;
 use demo::double_value;
 use lidar::flatscan::forward_lidar_flatscan;
 use lidar::pointcloud::forward_lidar_pointcloud;

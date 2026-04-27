@@ -35,6 +35,7 @@ function(add_ogn_node)
                 --exec "${SCRIPT}"
         DEPENDS "${ARG_OGN_FILE}" "${SCRIPT}"
         COMMENT "OGN codegen: ${NODE_NAME}"
+        JOB_POOL ogn_codegen
         VERBATIM
     )
 

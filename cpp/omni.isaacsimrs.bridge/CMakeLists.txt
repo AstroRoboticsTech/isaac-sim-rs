@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Each Ogn codegen step launches a headless Kit process that locks
+# packman caches and Kit shared-mem keys; running them in parallel
+# races on those locks. Pin to one job at a time.
+set_property(GLOBAL PROPERTY JOB_POOLS ogn_codegen=1)
+
 find_package(CUDAToolkit REQUIRED)
 
 if(NOT DEFINED ENV{ISAAC_SIM_PATH})
@@ -80,9 +85,21 @@ target_include_directories(omni_isaacsimrs_bridge PRIVATE
     "${OGN_GEN_DIR}"
 )
 
-target_link_directories(omni_isaacsimrs_bridge PRIVATE "${USD_ROOT}/lib")
+target_link_directories(omni_isaacsimrs_bridge PRIVATE
+    "${USD_ROOT}/lib"
+    "${CARGO_TARGET_DIR}/${CARGO_PROFILE}"
+)
 
-target_link_libraries(omni_isaacsimrs_bridge PRIVATE dl "${RUST_CDYLIB_PATH}" CUDA::cudart)
+# Link against the cdylib by SONAME (`-l:libisaac_sim_bridge.so`) rather
+# than the absolute build-time path. The runtime dependency is then
+# resolved via $ORIGIN against the bin/ copy regardless of which cargo
+# profile produced it, so a profile change without rerunning cargo
+# can't stale the embedded DT_NEEDED entry.
+target_link_libraries(omni_isaacsimrs_bridge PRIVATE
+    dl
+    -l:libisaac_sim_bridge.so
+    CUDA::cudart
+)
 
 add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

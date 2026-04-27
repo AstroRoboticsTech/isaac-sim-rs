@@ -71,6 +71,7 @@ set_target_properties(omni_isaacsimrs_bridge PROPERTIES
 )
 
 target_include_directories(omni_isaacsimrs_bridge PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${ISAAC_SIM}/kit/dev/include"
     "${ISAAC_SIM}/kit/dev/fabric/include"
     "${ISAAC_SIM}/kit/dev/gsl/include"

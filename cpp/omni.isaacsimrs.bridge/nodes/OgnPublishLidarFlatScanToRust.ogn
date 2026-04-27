@@ -21,7 +21,7 @@
             "rotationRate": {"type": "float", "description": "Sensor rotation rate in Hz", "default": 0.0}
         },
         "outputs": {
-            "exec": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
+            "execOut": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
         }
     }
 }

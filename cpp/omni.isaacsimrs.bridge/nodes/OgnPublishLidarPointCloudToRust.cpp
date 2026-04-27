@@ -1,5 +1,5 @@
 #include "OgnPublishLidarPointCloudToRustDatabase.h"
-#include "isaac-sim-bridge/src/lib.rs.h"
+#include "isaacsimrs/forward.hpp"
 #include <cuda_runtime.h>
 #include <cstddef>
 #include <cstdint>
@@ -10,6 +10,7 @@ class OgnPublishLidarPointCloudToRust
 public:
     static bool compute(OgnPublishLidarPointCloudToRustDatabase& db)
     {
+        using namespace isaacsimrs::detail;
         const auto cuda_idx = db.inputs.cudaDeviceIndex();
         const auto data_ptr = db.inputs.dataPtr();
         const auto buffer_size = db.inputs.bufferSize();
@@ -44,16 +45,13 @@ public:
 
         rust::Slice<const float> points{ host_ptr, num_floats };
 
-        const std::string& source = db.inputs.sourceId();
-        rust::Str source_id{ source.data(), source.size() };
-
         isaacsimrs::LidarPointCloudMeta meta{
             static_cast<std::int32_t>(num_points),
             static_cast<std::int32_t>(db.inputs.width()),
             static_cast<std::int32_t>(db.inputs.height()),
         };
 
-        isaacsimrs::forward_lidar_pointcloud(source_id, points, meta);
+        isaacsimrs::forward_lidar_pointcloud(str_from(db.inputs.sourceId()), points, meta);
 
         db.outputs.execOut() = kExecutionAttributeStateEnabled;
         return true;

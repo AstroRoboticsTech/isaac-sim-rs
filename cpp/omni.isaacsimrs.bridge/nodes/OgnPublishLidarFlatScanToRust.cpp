@@ -1,13 +1,12 @@
 #include "OgnPublishLidarFlatScanToRustDatabase.h"
-#include "isaac-sim-bridge/src/lib.rs.h"
+#include "isaacsimrs/forward.hpp"
 
 class OgnPublishLidarFlatScanToRust
 {
 public:
     static bool compute(OgnPublishLidarFlatScanToRustDatabase& db)
     {
-        const auto& depths = db.inputs.linearDepthData();
-        const auto& intensities = db.inputs.intensitiesData();
+        using namespace isaacsimrs::detail;
         const auto& azimuth = db.inputs.azimuthRange();
         const auto& depth = db.inputs.depthRange();
 
@@ -23,14 +22,13 @@ public:
             db.inputs.rotationRate(),
         };
 
-        const std::string& source = db.inputs.sourceId();
-        rust::Str source_id{ source.data(), source.size() };
-        rust::Slice<const float> scan_slice{ depths.data(), depths.size() };
-        rust::Slice<const std::uint8_t> intensity_slice{ intensities.data(), intensities.size() };
+        isaacsimrs::forward_lidar_flatscan(
+            str_from(db.inputs.sourceId()),
+            slice_from<float>(db.inputs.linearDepthData()),
+            slice_from<std::uint8_t>(db.inputs.intensitiesData()),
+            meta);
 
-        isaacsimrs::forward_lidar_flatscan(source_id, scan_slice, intensity_slice, meta);
-
-        db.outputs.exec() = kExecutionAttributeStateEnabled;
+        db.outputs.execOut() = kExecutionAttributeStateEnabled;
         return true;
     }
 };

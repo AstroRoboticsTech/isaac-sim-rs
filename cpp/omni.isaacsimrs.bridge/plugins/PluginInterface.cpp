@@ -26,6 +26,14 @@ CARB_PLUGIN_IMPL(kPluginImpl, isaacsimrs::IBridge)
 CARB_PLUGIN_IMPL_NO_DEPS()
 DECLARE_OGN_NODES()
 
+// INITIALIZE_OGN_NODES() is called from THREE Kit lifecycle hooks
+// (static-init, fillInterface, carbOnPluginStartup). This is intentional —
+// Kit's extension manager loads the plugin .so lazily and the timing of
+// each hook varies depending on whether something requests the IBridge
+// interface and whether `--exec drive.py` runs before plugins finish
+// startup. Calling INITIALIZE_OGN_NODES from multiple hooks is the
+// empirically reliable way to ensure OG node types are registered before
+// any code tries to instantiate them. The macro is idempotent.
 void fillInterface(isaacsimrs::IBridge& iface)
 {
     (void)iface;
@@ -41,18 +49,18 @@ void load_optional_runner(const char* env_var, const char* init_symbol)
     void* handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
     if (!handle)
     {
-        CARB_LOG_WARN("[omni.isaacsimrs.bridge] dlopen %s failed: %s", path, dlerror());
+        CARB_LOG_ERROR("[omni.isaacsimrs.bridge] %s='%s' but dlopen failed: %s", env_var, path, dlerror());
         return;
     }
     auto init_fn = reinterpret_cast<int (*)()>(dlsym(handle, init_symbol));
     if (!init_fn)
     {
-        CARB_LOG_WARN("[omni.isaacsimrs.bridge] dlsym %s failed: %s", init_symbol, dlerror());
+        CARB_LOG_ERROR("[omni.isaacsimrs.bridge] %s='%s' but dlsym '%s' failed: %s", env_var, path, init_symbol, dlerror());
         return;
     }
     if (int rc = init_fn(); rc != 0)
     {
-        CARB_LOG_WARN("[omni.isaacsimrs.bridge] %s returned %d", init_symbol, rc);
+        CARB_LOG_ERROR("[omni.isaacsimrs.bridge] %s='%s' init returned %d", env_var, path, rc);
     }
 }
 
@@ -72,12 +80,10 @@ static EagerInit g_eager_init;
 
 void carbOnPluginStartup()
 {
-    CARB_LOG_INFO("[omni.isaacsimrs.bridge] hello from carbOnPluginStartup");
     INITIALIZE_OGN_NODES();
 }
 
 void carbOnPluginShutdown()
 {
     RELEASE_OGN_NODES();
-    CARB_LOG_INFO("[omni.isaacsimrs.bridge] shutting down");
 }

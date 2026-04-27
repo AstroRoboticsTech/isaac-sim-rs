@@ -1,0 +1,24 @@
+{
+    "PublishCameraDepthToRust": {
+        "version": 1,
+        "language": "C++",
+        "description": "Forwards a per-pixel depth image (float32 metres) to a Rust subscriber via FFI. Designed to be auto-wired by Replicator's NodeWriter framework against the IsaacPassthroughImagePtr annotator (rendervar prefix DistanceToImagePlaneSD): input names match the annotator's outputs (dataPtr, bufferSize, cudaDeviceIndex, width, height) so register_node_writer_with_telemetry connects them by name. Set sourceId to the camera prim path so downstream consumers can route per-source.",
+        "metadata": {
+            "categories": ["Sensor"],
+            "keywords": ["rtx", "camera", "depth", "rust", "ffi"]
+        },
+        "inputs": {
+            "execIn": {"type": "execution", "description": "Trigger when a depth frame is ready (Replicator NodeWriter wires this from the IsaacPassthroughImagePtr annotator's outputs:execOut via the writer's sync gate)"},
+            "sourceId": {"type": "string", "description": "Camera prim path (or any user-chosen identifier) used by adapters to route per-source", "default": ""},
+            "dataPtr": {"type": "uint64", "default": 0, "description": "Pointer to packed float32 depth buffer (one float per pixel, distance in metres); auto-wired from IsaacPassthroughImagePtr.outputs:dataPtr"},
+            "bufferSize": {"type": "uint", "default": 0, "description": "Buffer size in bytes; num_pixels = bufferSize / 4"},
+            "cudaDeviceIndex": {"type": "int", "default": -1, "description": "CUDA device index of the buffer (-1 means host-resident); RTX render output is GPU-resident so cudaMemcpyDeviceToHost is required when >= 0"},
+            "format": {"type": "uint64", "default": 0, "description": "Carb pixel format code (see carb::Format); when bufferSize == 0 the dataPtr is a cudaMipmappedArray_t and format determines per-pixel size and how to extract the texture (eR32_SFLOAT == float32 depth)"},
+            "width": {"type": "uint", "default": 0, "description": "Image width in pixels"},
+            "height": {"type": "uint", "default": 0, "description": "Image height in pixels"}
+        },
+        "outputs": {
+            "execOut": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
+        }
+    }
+}

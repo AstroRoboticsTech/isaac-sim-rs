@@ -1,4 +1,4 @@
-"""Drive 2D + 3D RTX LiDAR and an RGB camera through the bridge.
+"""Drive 2D + 3D RTX LiDAR and an RGBD camera through the bridge.
 
 2D FlatScan uses og.Controller.connect because the FlatScan
 annotator's on_attach_callback wires SdOnNewRenderProductFrame
@@ -9,10 +9,11 @@ accumulating IsaacCreateRTXLidarScanBuffer annotator (full rotation
 per output). The NoAccumulator variant emits a per-frame wedge
 instead and visually spins.
 
-Camera RGB also uses register_node_writer_with_telemetry, against
-the IsaacConvertRGBAToRGB annotator chain (RTX renderer LDR colour
-buffer -> RGBA -> RGB). The annotator's rendervar prefix is
-LdrColorSD, mirroring NVIDIA's ROS2 image bridge wiring.
+Camera RGB and Depth share one Camera prim and one render product but
+use independent annotator chains (LdrColorSDIsaacConvertRGBAToRGB and
+DistanceToImagePlaneSDIsaacPassthroughImagePtr respectively). They
+dispatch independently at the camera's render rate, mirroring NVIDIA's
+ROS2 image bridge.
 """
 
 import omni.graph.core as og
@@ -137,7 +138,25 @@ camera_rgb_writer = rep.WriterRegistry.get(camera_rgb_writer_name)
 camera_rgb_writer.initialize(sourceId=CAMERA_RGB_PRIM)
 camera_rgb_writer.attach([camera_rgb.get_render_product_path()])
 
+# Depth comes from the same Camera prim — attach the distance annotator
+# and a second NodeWriter against IsaacPassthroughImagePtr for the
+# DistanceToImagePlaneSD rendervar (float32 metres per pixel).
+camera_rgb.attach_annotator("distance_to_image_plane")
+camera_depth_rendervar = SyntheticData.convert_sensor_type_to_rendervar(
+    sd.SensorType.DistanceToImagePlane.name
+)
+camera_depth_writer_name = f"{camera_depth_rendervar}PublishCameraDepthToRust"
+register_node_writer_with_telemetry(
+    name=camera_depth_writer_name,
+    node_type_id="omni.isaacsimrs.bridge.PublishCameraDepthToRust",
+    annotators=[f"{camera_depth_rendervar}IsaacPassthroughImagePtr"],
+    category="omni.isaacsimrs.bridge",
+)
+camera_depth_writer = rep.WriterRegistry.get(camera_depth_writer_name)
+camera_depth_writer.initialize(sourceId=CAMERA_RGB_PRIM)
+camera_depth_writer.attach([camera_rgb.get_render_product_path()])
+
 omni.timeline.get_timeline_interface().play()
 print(
-    "[og_drive] 2D FlatScan + 3D PointCloud + RGB camera wired; timeline playing"
+    "[og_drive] 2D FlatScan + 3D PointCloud + RGB + Depth wired; timeline playing"
 )

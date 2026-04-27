@@ -1,5 +1,14 @@
-use isaac_sim_bridge::{CameraRgb, LidarFlatScan, LidarPointCloud};
+//! Bridge runner the Carb plugin dlopens via
+//! `ISAAC_SIM_RS_RERUN_RUNNER`. Pure wiring: each sensor goes to its
+//! own top-level entity tree so the rerun viewer's default blueprint
+//! gives each its own panel — RGB and depth do not share a 2D view.
+
+use isaac_sim_bridge::{CameraDepth, CameraRgb, LidarFlatScan, LidarPointCloud};
 use isaac_sim_rerun::Viewer;
+
+const LIDAR_2D_PRIM: &str = "/Root/World/Carter/chassis_link/lidar_2d";
+const LIDAR_3D_PRIM: &str = "/Root/World/Carter/chassis_link/sensors/XT_32/PandarXT_32_10hz";
+const CAMERA_PRIM: &str = "/Root/World/Carter/chassis_link/camera_rgb";
 
 #[unsafe(no_mangle)]
 pub extern "C" fn isaac_sim_rerun_init() -> i32 {
@@ -16,41 +25,9 @@ pub extern "C" fn isaac_sim_rerun_init() -> i32 {
 
 fn try_init() -> eyre::Result<()> {
     Viewer::new()
-        .with_source(
-            LidarFlatScan,
-            "/Root/World/Carter/chassis_link/lidar_2d",
-            "scene/lidar/flatscan",
-        )
-        .with_source(
-            LidarPointCloud,
-            "/Root/World/Carter/chassis_link/sensors/XT_32/PandarXT_32_10hz",
-            "scene/lidar/pointcloud",
-        )
-        .with_source(
-            CameraRgb,
-            "/Root/World/Carter/chassis_link/camera_rgb",
-            "scene/camera/rgb",
-        )
-        .with_blueprint(|rec| {
-            rec.log_static(
-                "scene/lidar/flatscan",
-                &rerun::TextDocument::new(
-                    "2D RTX LiDAR (Example_Rotary_2D) mounted on Carter chassis.",
-                ),
-            )?;
-            rec.log_static(
-                "scene/lidar/pointcloud",
-                &rerun::TextDocument::new(
-                    "3D RTX LiDAR (PandarXT_32_10hz) — Carter's built-in sensor, 32-channel.",
-                ),
-            )?;
-            rec.log_static(
-                "scene/camera/rgb",
-                &rerun::TextDocument::new(
-                    "Forward-facing RGB camera mounted on Carter chassis (LdrColor render product).",
-                ),
-            )?;
-            Ok(())
-        })
+        .with_source(LidarFlatScan, LIDAR_2D_PRIM, "lidar_flatscan")
+        .with_source(LidarPointCloud, LIDAR_3D_PRIM, "lidar_pointcloud")
+        .with_source(CameraRgb, CAMERA_PRIM, "camera_rgb")
+        .with_source(CameraDepth, CAMERA_PRIM, "camera_depth")
         .run()
 }

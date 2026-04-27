@@ -13,6 +13,7 @@
             "dataPtr": {"type": "uint64", "default": 0, "description": "Pointer to packed RGB uint8 buffer; auto-wired from IsaacConvertRGBAToRGB.outputs:dataPtr"},
             "bufferSize": {"type": "uint", "default": 0, "description": "Buffer size in bytes; num_pixels = bufferSize / 3"},
             "cudaDeviceIndex": {"type": "int", "default": -1, "description": "CUDA device index of the buffer (-1 means host-resident); RTX render output is GPU-resident so cudaMemcpyDeviceToHost is required when >= 0"},
+            "format": {"type": "uint64", "default": 0, "description": "Carb pixel format code (see carb::Format); RGB lands in linear-buffer mode so format is informational here, but the field is wired for parity with the depth path"},
             "width": {"type": "uint", "default": 0, "description": "Image width in pixels"},
             "height": {"type": "uint", "default": 0, "description": "Image height in pixels"}
         },

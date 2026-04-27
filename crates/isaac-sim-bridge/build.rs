@@ -15,4 +15,5 @@ fn main() {
     println!("cargo:rerun-if-changed=src/lidar/pointcloud.rs");
     println!("cargo:rerun-if-changed=src/camera/mod.rs");
     println!("cargo:rerun-if-changed=src/camera/rgb.rs");
+    println!("cargo:rerun-if-changed=src/camera/depth.rs");
 }

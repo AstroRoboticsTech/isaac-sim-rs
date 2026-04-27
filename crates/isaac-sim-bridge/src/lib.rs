@@ -9,6 +9,9 @@ mod sensor;
 mod source;
 
 pub use articulation::cmd_vel::{cmd_vel_producer_count, register_cmd_vel_producer, CmdVelChannel};
+pub use camera::depth::{
+    camera_depth_consumer_count, dispatch_camera_depth, register_camera_depth_consumer, CameraDepth,
+};
 pub use camera::rgb::{
     camera_rgb_consumer_count, dispatch_camera_rgb, register_camera_rgb_consumer, CameraRgb,
 };
@@ -57,6 +60,17 @@ mod ffi {
         timestamp_ns: i64,
     }
 
+    #[derive(Clone, Copy)]
+    struct CameraDepthMeta {
+        width: i32,
+        height: i32,
+        fx: f32,
+        fy: f32,
+        cx: f32,
+        cy: f32,
+        timestamp_ns: i64,
+    }
+
     #[derive(Default, Clone, Copy)]
     struct CmdVel {
         linear_x: f32,
@@ -79,13 +93,15 @@ mod ffi {
         );
         fn forward_lidar_pointcloud(source_id: &str, points: &[f32], meta: &LidarPointCloudMeta);
         fn forward_camera_rgb(source_id: &str, pixels: &[u8], meta: &CameraRgbMeta);
+        fn forward_camera_depth(source_id: &str, depths: &[f32], meta: &CameraDepthMeta);
         fn poll_cmd_vel(target_id: &str, out: &mut CmdVel) -> bool;
     }
 }
 
-pub use ffi::{CameraRgbMeta, CmdVel, LidarFlatScanMeta, LidarPointCloudMeta};
+pub use ffi::{CameraDepthMeta, CameraRgbMeta, CmdVel, LidarFlatScanMeta, LidarPointCloudMeta};
 
 use articulation::cmd_vel::poll_cmd_vel;
+use camera::depth::forward_camera_depth;
 use camera::rgb::forward_camera_rgb;
 use demo::double_value;
 use lidar::flatscan::forward_lidar_flatscan;

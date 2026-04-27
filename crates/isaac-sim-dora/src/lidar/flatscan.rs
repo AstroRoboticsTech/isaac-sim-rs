@@ -35,13 +35,14 @@ pub fn register_dora_lidar_flatscan_publisher(
     });
 }
 
-fn publish(
-    node: &Mutex<DoraNode>,
-    output: &DataId,
+/// Pure conversion from bridge-side scan + meta to a dora-ready Arrow
+/// StructArray. Extracted so it's testable without spinning up a
+/// DoraNode.
+pub fn build_struct_array(
     scan: &[f32],
     intensities: &[u8],
     meta: &LidarFlatScanMeta,
-) -> eyre::Result<()> {
+) -> eyre::Result<StructArray> {
     let lidar = ArrowFlatScan {
         depths: scan,
         intensities,
@@ -56,9 +57,48 @@ fn publish(
         rotation_rate: meta.rotation_rate,
     };
     let batch = to_record_batch(&lidar)?;
-    let array = StructArray::from(batch);
+    Ok(StructArray::from(batch))
+}
 
+fn publish(
+    node: &Mutex<DoraNode>,
+    output: &DataId,
+    scan: &[f32],
+    intensities: &[u8],
+    meta: &LidarFlatScanMeta,
+) -> eyre::Result<()> {
+    let array = build_struct_array(scan, intensities, meta)?;
     let mut guard = node.lock();
     guard.send_output(output.clone(), MetadataParameters::default(), array)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arrow::array::Array;
+
+    fn fake_meta() -> LidarFlatScanMeta {
+        LidarFlatScanMeta {
+            horizontal_fov: 270.0,
+            horizontal_resolution: 0.25,
+            azimuth_min: -135.0,
+            azimuth_max: 135.0,
+            depth_min: 0.1,
+            depth_max: 30.0,
+            num_rows: 1,
+            num_cols: 4,
+            rotation_rate: 10.0,
+        }
+    }
+
+    #[test]
+    fn build_struct_array_round_trips_scan() {
+        let scan = [0.5_f32, 1.2, 2.7, 3.0];
+        let intensities = [10_u8, 50, 200, 100];
+        let array = build_struct_array(&scan, &intensities, &fake_meta()).expect("build");
+        // 11-column flatscan schema; 1 row per dispatch.
+        assert_eq!(array.num_columns(), 11);
+        assert_eq!(array.len(), 1);
+    }
 }

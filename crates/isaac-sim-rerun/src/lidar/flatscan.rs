@@ -12,6 +12,14 @@ impl RerunRender for LidarFlatScan {
 pub fn flatscan_to_points(meta: &LidarFlatScanMeta, depths: &[f32]) -> Vec<[f32; 3]> {
     let n = depths.len();
     let mut positions = Vec::with_capacity(n);
+    fill_polar_into(meta, depths, &mut positions);
+    positions
+}
+
+fn fill_polar_into(meta: &LidarFlatScanMeta, depths: &[f32], out: &mut Vec<[f32; 3]>) {
+    let n = depths.len();
+    out.clear();
+    out.reserve(n);
     for (i, &r) in depths.iter().enumerate() {
         let t = if n > 1 {
             i as f32 / (n - 1) as f32
@@ -20,9 +28,8 @@ pub fn flatscan_to_points(meta: &LidarFlatScanMeta, depths: &[f32]) -> Vec<[f32;
         };
         let az_deg = meta.azimuth_min + t * (meta.azimuth_max - meta.azimuth_min);
         let az = az_deg.to_radians();
-        positions.push([r * az.cos(), r * az.sin(), 0.0]);
+        out.push([r * az.cos(), r * az.sin(), 0.0]);
     }
-    positions
 }
 
 pub fn log_lidar_flatscan(
@@ -35,16 +42,30 @@ pub fn log_lidar_flatscan(
     if depths.is_empty() {
         return Ok(());
     }
-    let positions = flatscan_to_points(meta, depths);
-    let mut archetype = Points3D::new(positions);
-    if intensities.len() == depths.len() {
-        let colors: Vec<Color> = intensities
-            .iter()
-            .map(|&v| Color::from_rgb(v, v, v))
-            .collect();
-        archetype = archetype.with_colors(colors);
+    // Per-thread reusable buffers avoid the per-scan Vec alloc.
+    thread_local! {
+        static POSITIONS: std::cell::RefCell<Vec<[f32; 3]>> = const { std::cell::RefCell::new(Vec::new()) };
+        static COLORS: std::cell::RefCell<Vec<Color>> = const { std::cell::RefCell::new(Vec::new()) };
     }
-    rec.log(entity_path, &archetype)?;
+    POSITIONS.with(|positions_cell| {
+        COLORS.with(|colors_cell| {
+            let mut positions = positions_cell.borrow_mut();
+            fill_polar_into(meta, depths, &mut positions);
+
+            let archetype = if intensities.len() == depths.len() {
+                let mut colors = colors_cell.borrow_mut();
+                colors.clear();
+                colors.reserve(intensities.len());
+                for &v in intensities {
+                    colors.push(Color::from_rgb(v, v, v));
+                }
+                Points3D::new(positions.iter().copied()).with_colors(colors.iter().copied())
+            } else {
+                Points3D::new(positions.iter().copied())
+            };
+            rec.log(entity_path, &archetype)
+        })
+    })?;
     Ok(())
 }
 

@@ -35,12 +35,10 @@ pub fn register_dora_lidar_pointcloud_publisher(
     });
 }
 
-fn publish(
-    node: &Mutex<DoraNode>,
-    output: &DataId,
-    points: &[f32],
-    meta: &LidarPointCloudMeta,
-) -> eyre::Result<()> {
+/// Pure conversion from bridge-side packed-XYZ points + meta to a
+/// dora-ready Arrow StructArray. Extracted for testability without a
+/// DoraNode.
+pub fn build_struct_array(points: &[f32], meta: &LidarPointCloudMeta) -> eyre::Result<StructArray> {
     let pc = ArrowPointCloud {
         points,
         num_points: meta.num_points,
@@ -48,9 +46,40 @@ fn publish(
         height: meta.height,
     };
     let batch = to_record_batch(&pc)?;
-    let array = StructArray::from(batch);
+    Ok(StructArray::from(batch))
+}
 
+fn publish(
+    node: &Mutex<DoraNode>,
+    output: &DataId,
+    points: &[f32],
+    meta: &LidarPointCloudMeta,
+) -> eyre::Result<()> {
+    let array = build_struct_array(points, meta)?;
     let mut guard = node.lock();
     guard.send_output(output.clone(), MetadataParameters::default(), array)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arrow::array::Array;
+
+    #[test]
+    fn build_struct_array_round_trips_points() {
+        let points = [
+            1.0_f32, 0.0, 0.0, //
+            0.0, 1.0, 0.0, //
+            0.0, 0.0, 1.0,
+        ];
+        let meta = LidarPointCloudMeta {
+            num_points: 3,
+            width: 3,
+            height: 1,
+        };
+        let array = build_struct_array(&points, &meta).expect("build");
+        assert_eq!(array.num_columns(), 4);
+        assert_eq!(array.len(), 1);
+    }
 }

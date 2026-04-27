@@ -57,7 +57,9 @@ impl<C> Default for Channel<C> {
 /// sensor module — the getter declaration is what the dynamic linker
 /// dedups; this helper just abstracts the OnceLock + Box machinery
 /// behind it.
-pub fn channel_singleton<C: 'static>(slot: &'static OnceLock<Box<Channel<C>>>) -> *const Channel<C> {
+pub fn channel_singleton<C: 'static>(
+    slot: &'static OnceLock<Box<Channel<C>>>,
+) -> *const Channel<C> {
     let ch = slot.get_or_init(|| Box::new(Channel::new()));
     Box::as_ref(ch) as *const Channel<C>
 }

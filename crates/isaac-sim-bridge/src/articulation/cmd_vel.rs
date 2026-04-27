@@ -83,7 +83,10 @@ mod tests {
     #[test]
     fn poll_misses_when_no_producer() {
         let mut out = CmdVel::default();
-        assert!(!poll_cmd_vel("/test/articulation/never_registered", &mut out));
+        assert!(!poll_cmd_vel(
+            "/test/articulation/never_registered",
+            &mut out
+        ));
     }
 
     #[test]

@@ -7,9 +7,7 @@ mod producer;
 mod sensor;
 mod source;
 
-pub use articulation::cmd_vel::{
-    cmd_vel_producer_count, register_cmd_vel_producer, CmdVelChannel,
-};
+pub use articulation::cmd_vel::{cmd_vel_producer_count, register_cmd_vel_producer, CmdVelChannel};
 pub use lidar::flatscan::{
     dispatch_lidar_flatscan, lidar_flatscan_consumer_count, register_lidar_flatscan_consumer,
     LidarFlatScan,

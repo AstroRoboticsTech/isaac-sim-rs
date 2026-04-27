@@ -10,10 +10,7 @@ pub fn log_lidar_pointcloud(
     if points.is_empty() {
         return Ok(());
     }
-    let positions: Vec<[f32; 3]> = points
-        .chunks_exact(3)
-        .map(|c| [c[0], c[1], c[2]])
-        .collect();
+    let positions: Vec<[f32; 3]> = points.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     if positions.is_empty() {
         return Ok(());
     }

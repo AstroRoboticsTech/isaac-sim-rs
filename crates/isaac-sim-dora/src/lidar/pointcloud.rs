@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use arrow::array::StructArray;
 use dora_node_api::dora_core::config::DataId;
 use dora_node_api::{DoraNode, MetadataParameters};
-use isaac_sim_arrow::lidar_pointcloud::{to_record_batch, LidarPointCloud};
+use isaac_sim_arrow::lidar::pointcloud::{to_record_batch, LidarPointCloud};
 use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloudMeta};
 
 pub fn register_dora_lidar_pointcloud_publisher(

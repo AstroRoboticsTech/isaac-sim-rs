@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use arrow::array::StructArray;
 use dora_node_api::dora_core::config::DataId;
 use dora_node_api::{DoraNode, MetadataParameters};
-use isaac_sim_arrow::lidar_flatscan::{to_record_batch, LidarFlatScan};
+use isaac_sim_arrow::lidar::flatscan::{to_record_batch, LidarFlatScan};
 use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScanMeta};
 
 /// Register a dora publisher that filters by `source` and emits

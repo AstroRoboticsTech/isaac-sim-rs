@@ -1,13 +1,13 @@
-mod consumers;
+mod channel;
 mod demo;
-mod lidar_flatscan;
-mod lidar_pointcloud;
+mod lidar;
 mod lifecycle;
 
-pub use consumers::{
-    dispatch_lidar_flatscan, dispatch_lidar_pointcloud, lidar_flatscan_consumer_count,
-    lidar_pointcloud_consumer_count, register_lidar_flatscan_consumer,
-    register_lidar_pointcloud_consumer,
+pub use lidar::flatscan::{
+    dispatch_lidar_flatscan, lidar_flatscan_consumer_count, register_lidar_flatscan_consumer,
+};
+pub use lidar::pointcloud::{
+    dispatch_lidar_pointcloud, lidar_pointcloud_consumer_count, register_lidar_pointcloud_consumer,
 };
 
 #[cxx::bridge(namespace = "isaacsimrs")]
@@ -46,6 +46,6 @@ mod ffi {
 pub use ffi::{LidarFlatScanMeta, LidarPointCloudMeta};
 
 use demo::double_value;
-use lidar_flatscan::forward_lidar_flatscan;
-use lidar_pointcloud::forward_lidar_pointcloud;
+use lidar::flatscan::forward_lidar_flatscan;
+use lidar::pointcloud::forward_lidar_pointcloud;
 use lifecycle::init;

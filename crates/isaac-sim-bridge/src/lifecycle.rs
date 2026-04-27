@@ -1,6 +1,7 @@
 use std::sync::Once;
 
-use crate::consumers::{register_lidar_flatscan_consumer, register_lidar_pointcloud_consumer};
+use crate::lidar::flatscan::register_lidar_flatscan_consumer;
+use crate::lidar::pointcloud::register_lidar_pointcloud_consumer;
 
 static INIT: Once = Once::new();
 

@@ -3,8 +3,8 @@ use std::sync::{Arc, Mutex};
 
 use dora_node_api::DoraNode;
 
-use crate::lidar_flatscan::register_dora_lidar_flatscan_publisher;
-use crate::lidar_pointcloud::register_dora_lidar_pointcloud_publisher;
+use crate::lidar::flatscan::register_dora_lidar_flatscan_publisher;
+use crate::lidar::pointcloud::register_dora_lidar_pointcloud_publisher;
 
 const LIDAR_FLATSCAN_SOURCE_ENV: &str = "ISAAC_SIM_RS_DORA_LIDAR_FLATSCAN_SOURCE";
 const LIDAR_FLATSCAN_OUTPUT_ENV: &str = "ISAAC_SIM_RS_DORA_LIDAR_FLATSCAN_OUTPUT";

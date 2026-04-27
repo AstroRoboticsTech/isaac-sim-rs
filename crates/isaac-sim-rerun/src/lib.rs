@@ -1,5 +1,4 @@
-pub mod lidar_flatscan;
-pub mod lidar_pointcloud;
+pub mod lidar;
 pub mod viewer;
 
 pub use viewer::Viewer;

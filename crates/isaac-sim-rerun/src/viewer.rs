@@ -2,8 +2,8 @@ use std::env;
 
 use rerun::{RecordingStream, RecordingStreamBuilder};
 
-use crate::lidar_flatscan::register_rerun_lidar_flatscan_publisher;
-use crate::lidar_pointcloud::register_rerun_lidar_pointcloud_publisher;
+use crate::lidar::flatscan::register_rerun_lidar_flatscan_publisher;
+use crate::lidar::pointcloud::register_rerun_lidar_pointcloud_publisher;
 
 const APP_ID: &str = "isaac-sim-rs";
 const GRPC_ADDR_ENV: &str = "ISAAC_SIM_RS_RERUN_GRPC_ADDR";

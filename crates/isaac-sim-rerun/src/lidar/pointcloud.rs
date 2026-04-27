@@ -7,14 +7,12 @@ pub fn log_lidar_pointcloud(
     points: &[f32],
     _meta: &LidarPointCloudMeta,
 ) -> eyre::Result<()> {
-    if points.is_empty() {
+    let n = points.len() / 3;
+    if n == 0 {
         return Ok(());
     }
-    let positions: Vec<[f32; 3]> = points.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
-    if positions.is_empty() {
-        return Ok(());
-    }
-    rec.log(entity_path, &Points3D::new(positions))?;
+    let positions: &[[f32; 3]] = bytemuck::cast_slice(&points[..n * 3]);
+    rec.log(entity_path, &Points3D::new(positions.iter().copied()))?;
     Ok(())
 }
 

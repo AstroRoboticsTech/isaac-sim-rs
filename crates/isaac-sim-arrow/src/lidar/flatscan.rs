@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use arrow::array::{ArrayRef, Float32Array, Int32Array, ListArray, UInt8Array};
 use arrow::buffer::OffsetBuffer;
@@ -20,27 +20,32 @@ pub struct LidarFlatScan<'a> {
 }
 
 pub fn schema() -> SchemaRef {
-    Arc::new(Schema::new(vec![
-        Field::new(
-            "depths",
-            DataType::List(Arc::new(Field::new("item", DataType::Float32, false))),
-            false,
-        ),
-        Field::new(
-            "intensities",
-            DataType::List(Arc::new(Field::new("item", DataType::UInt8, false))),
-            false,
-        ),
-        Field::new("horizontal_fov", DataType::Float32, false),
-        Field::new("horizontal_resolution", DataType::Float32, false),
-        Field::new("azimuth_min", DataType::Float32, false),
-        Field::new("azimuth_max", DataType::Float32, false),
-        Field::new("depth_min", DataType::Float32, false),
-        Field::new("depth_max", DataType::Float32, false),
-        Field::new("num_rows", DataType::Int32, false),
-        Field::new("num_cols", DataType::Int32, false),
-        Field::new("rotation_rate", DataType::Float32, false),
-    ]))
+    static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
+    SCHEMA
+        .get_or_init(|| {
+            Arc::new(Schema::new(vec![
+                Field::new(
+                    "depths",
+                    DataType::List(Arc::new(Field::new("item", DataType::Float32, false))),
+                    false,
+                ),
+                Field::new(
+                    "intensities",
+                    DataType::List(Arc::new(Field::new("item", DataType::UInt8, false))),
+                    false,
+                ),
+                Field::new("horizontal_fov", DataType::Float32, false),
+                Field::new("horizontal_resolution", DataType::Float32, false),
+                Field::new("azimuth_min", DataType::Float32, false),
+                Field::new("azimuth_max", DataType::Float32, false),
+                Field::new("depth_min", DataType::Float32, false),
+                Field::new("depth_max", DataType::Float32, false),
+                Field::new("num_rows", DataType::Int32, false),
+                Field::new("num_cols", DataType::Int32, false),
+                Field::new("rotation_rate", DataType::Float32, false),
+            ]))
+        })
+        .clone()
 }
 
 pub fn to_record_batch(scan: &LidarFlatScan) -> Result<RecordBatch, arrow::error::ArrowError> {

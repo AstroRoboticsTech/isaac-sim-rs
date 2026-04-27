@@ -11,5 +11,6 @@ publish = false
 [dependencies]
 isaac-sim-bridge = { path = "../isaac-sim-bridge" }
 rerun = { workspace = true }
+bytemuck = { workspace = true }
 eyre = "0.6"
 log = { workspace = true }

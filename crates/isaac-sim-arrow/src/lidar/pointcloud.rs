@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use arrow::array::{ArrayRef, Float32Array, Int32Array, ListArray};
 use arrow::buffer::OffsetBuffer;
@@ -13,16 +13,21 @@ pub struct LidarPointCloud<'a> {
 }
 
 pub fn schema() -> SchemaRef {
-    Arc::new(Schema::new(vec![
-        Field::new(
-            "points",
-            DataType::List(Arc::new(Field::new("item", DataType::Float32, false))),
-            false,
-        ),
-        Field::new("num_points", DataType::Int32, false),
-        Field::new("width", DataType::Int32, false),
-        Field::new("height", DataType::Int32, false),
-    ]))
+    static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
+    SCHEMA
+        .get_or_init(|| {
+            Arc::new(Schema::new(vec![
+                Field::new(
+                    "points",
+                    DataType::List(Arc::new(Field::new("item", DataType::Float32, false))),
+                    false,
+                ),
+                Field::new("num_points", DataType::Int32, false),
+                Field::new("width", DataType::Int32, false),
+                Field::new("height", DataType::Int32, false),
+            ]))
+        })
+        .clone()
 }
 
 fn list_f32(values: &[f32]) -> ListArray {

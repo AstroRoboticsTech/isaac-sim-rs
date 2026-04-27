@@ -1,4 +1,6 @@
-use crate::channel::Channel;
+use std::sync::OnceLock;
+
+use crate::channel::{channel_singleton, Channel};
 use crate::ffi::LidarFlatScanMeta;
 use crate::sensor::Sensor;
 
@@ -11,13 +13,29 @@ impl Sensor for LidarFlatScan {
 
 pub type Callback = Box<dyn Fn(&str, &[f32], &[u8], &LidarFlatScanMeta) + Send + Sync + 'static>;
 
-static CHANNEL: Channel<Callback> = Channel::new();
+/// Process-wide singleton handle to the FlatScan channel.
+///
+/// `#[no_mangle] pub extern "C"` makes the symbol visible to the dynamic
+/// linker with default visibility. When the bridge crate is compiled
+/// into multiple cdylibs (the bridge plugin's cdylib + any adapter
+/// cdylib loaded with RTLD_GLOBAL), every cdylib's call to this getter
+/// resolves to the first-loaded copy under RTLD_GLOBAL semantics, so
+/// register and dispatch from any cdylib hit the same heap registry.
+#[unsafe(no_mangle)]
+pub extern "C" fn isaac_sim_bridge_channel_lidar_flatscan() -> *const Channel<Callback> {
+    static SLOT: OnceLock<Box<Channel<Callback>>> = OnceLock::new();
+    channel_singleton(&SLOT)
+}
+
+fn channel() -> &'static Channel<Callback> {
+    unsafe { &*isaac_sim_bridge_channel_lidar_flatscan() }
+}
 
 pub fn register_lidar_flatscan_consumer<F>(cb: F)
 where
     F: Fn(&str, &[f32], &[u8], &LidarFlatScanMeta) + Send + Sync + 'static,
 {
-    CHANNEL.register(Box::new(cb));
+    channel().register(Box::new(cb));
 }
 
 pub fn dispatch_lidar_flatscan(
@@ -26,11 +44,11 @@ pub fn dispatch_lidar_flatscan(
     intensities: &[u8],
     meta: &LidarFlatScanMeta,
 ) {
-    CHANNEL.for_each(|cb| cb(source_id, scan, intensities, meta));
+    channel().for_each(|cb| cb(source_id, scan, intensities, meta));
 }
 
 pub fn lidar_flatscan_consumer_count() -> usize {
-    CHANNEL.count()
+    channel().count()
 }
 
 pub fn forward_lidar_flatscan(

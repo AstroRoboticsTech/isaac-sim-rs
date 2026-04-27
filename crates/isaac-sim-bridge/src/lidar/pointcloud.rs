@@ -1,4 +1,6 @@
-use crate::channel::Channel;
+use std::sync::OnceLock;
+
+use crate::channel::{channel_singleton, Channel};
 use crate::ffi::LidarPointCloudMeta;
 use crate::sensor::Sensor;
 
@@ -11,21 +13,29 @@ impl Sensor for LidarPointCloud {
 
 pub type Callback = Box<dyn Fn(&str, &[f32], &LidarPointCloudMeta) + Send + Sync + 'static>;
 
-static CHANNEL: Channel<Callback> = Channel::new();
+#[unsafe(no_mangle)]
+pub extern "C" fn isaac_sim_bridge_channel_lidar_pointcloud() -> *const Channel<Callback> {
+    static SLOT: OnceLock<Box<Channel<Callback>>> = OnceLock::new();
+    channel_singleton(&SLOT)
+}
+
+fn channel() -> &'static Channel<Callback> {
+    unsafe { &*isaac_sim_bridge_channel_lidar_pointcloud() }
+}
 
 pub fn register_lidar_pointcloud_consumer<F>(cb: F)
 where
     F: Fn(&str, &[f32], &LidarPointCloudMeta) + Send + Sync + 'static,
 {
-    CHANNEL.register(Box::new(cb));
+    channel().register(Box::new(cb));
 }
 
 pub fn dispatch_lidar_pointcloud(source_id: &str, points: &[f32], meta: &LidarPointCloudMeta) {
-    CHANNEL.for_each(|cb| cb(source_id, points, meta));
+    channel().for_each(|cb| cb(source_id, points, meta));
 }
 
 pub fn lidar_pointcloud_consumer_count() -> usize {
-    CHANNEL.count()
+    channel().count()
 }
 
 pub fn forward_lidar_pointcloud(source_id: &str, points: &[f32], meta: &LidarPointCloudMeta) {

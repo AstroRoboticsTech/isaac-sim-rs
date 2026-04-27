@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::ffi::CmdVel;
 use crate::producer::{ProducerRegistry, ProducerSlot};
@@ -17,17 +17,26 @@ impl Sensor for CmdVelChannel {
     const NAME: &'static str = "cmd_vel";
 }
 
-static REGISTRY: ProducerRegistry<CmdVel> = ProducerRegistry::new();
+#[unsafe(no_mangle)]
+pub extern "C" fn isaac_sim_bridge_registry_cmd_vel() -> *const ProducerRegistry<CmdVel> {
+    static SLOT: OnceLock<Box<ProducerRegistry<CmdVel>>> = OnceLock::new();
+    let r = SLOT.get_or_init(|| Box::new(ProducerRegistry::new()));
+    Box::as_ref(r) as *const ProducerRegistry<CmdVel>
+}
+
+fn registry() -> &'static ProducerRegistry<CmdVel> {
+    unsafe { &*isaac_sim_bridge_registry_cmd_vel() }
+}
 
 /// Register (or fetch) a cmd_vel producer for `target_id` (typically
 /// the articulation prim path). Multiple writers can hold their own
 /// Arc to the slot — last `publish` wins.
 pub fn register_cmd_vel_producer(target_id: impl Into<String>) -> Arc<ProducerSlot<CmdVel>> {
-    REGISTRY.register(target_id)
+    registry().register(target_id)
 }
 
 pub fn cmd_vel_producer_count() -> usize {
-    REGISTRY.count()
+    registry().count()
 }
 
 /// C++-facing poll. Looks up the slot for `target_id`, copies the
@@ -35,7 +44,7 @@ pub fn cmd_vel_producer_count() -> usize {
 /// Returns false if no producer is registered for that target or if
 /// no value has been published yet.
 pub fn poll_cmd_vel(target_id: &str, out: &mut CmdVel) -> bool {
-    if let Some(slot) = REGISTRY.lookup(target_id) {
+    if let Some(slot) = registry().lookup(target_id) {
         if let Some(v) = slot.latest() {
             *out = *v;
             return true;

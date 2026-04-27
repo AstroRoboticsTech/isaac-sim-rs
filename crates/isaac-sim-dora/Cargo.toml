@@ -15,6 +15,7 @@ crate-type = ["cdylib", "rlib"]
 isaac-sim-bridge = { path = "../isaac-sim-bridge" }
 isaac-sim-arrow = { path = "../isaac-sim-arrow" }
 dora-node-api = { version = "0.5", features = ["tracing"] }
+arc-swap = { workspace = true }
 arrow = { workspace = true }
 eyre = "0.6"
 log = { workspace = true }

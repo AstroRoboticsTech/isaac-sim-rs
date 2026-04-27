@@ -1,4 +1,5 @@
 use std::env;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use isaac_sim_bridge::{LidarFlatScan, LidarPointCloud};
 use rerun::{RecordingStream, RecordingStreamBuilder};
@@ -10,7 +11,7 @@ const GRPC_ADDR_ENV: &str = "ISAAC_SIM_RS_RERUN_GRPC_ADDR";
 const DEFAULT_GRPC_ADDR: &str = "127.0.0.1:9876";
 
 type BlueprintFn = Box<dyn FnOnce(&RecordingStream) -> eyre::Result<()>>;
-type Bind = Box<dyn FnOnce(&RecordingStream)>;
+type Bind = Box<dyn FnOnce(RecordingStream)>;
 
 /// Pure config until `.run()`; no I/O happens earlier.
 ///
@@ -48,7 +49,11 @@ impl Viewer {
     }
 
     /// Register a rerun publisher for sensor `S`. Each call adds an
-    /// independent source-filtered subscription.
+    /// independent source-filtered subscription. At `run()` time each
+    /// `with_source` call gets its own `RecordingStream` over its own
+    /// gRPC connection so a high-bandwidth sensor (camera) cannot
+    /// backpressure a low-bandwidth one (LiDAR). All streams share one
+    /// `recording_id`, so the viewer renders them on a single timeline.
     pub fn with_source<S: RerunRender>(
         mut self,
         _sensor: S,
@@ -58,9 +63,9 @@ impl Viewer {
         let source = source.into();
         let entity_path = entity_path.into();
         let label = format!("{}: '{source}' -> '{entity_path}'", S::NAME);
-        self.binds.push(Box::new(move |rec: &RecordingStream| {
+        self.binds.push(Box::new(move |rec: RecordingStream| {
             log::info!("[isaac-sim-rerun] {label}");
-            S::register(rec.clone(), source, entity_path);
+            S::register(rec, source, entity_path);
         }));
         self
     }
@@ -94,18 +99,40 @@ impl Viewer {
             env::var(GRPC_ADDR_ENV).unwrap_or_else(|_| DEFAULT_GRPC_ADDR.to_string())
         });
         let url = format!("rerun+http://{addr}/proxy");
-        log::info!("[isaac-sim-rerun] connecting to {url}");
-        let rec = RecordingStreamBuilder::new(APP_ID).connect_grpc_opts(url)?;
+        let recording_id = recording_id();
+        log::info!("[isaac-sim-rerun] connecting to {url} (recording_id={recording_id})");
 
-        if let Some(bp) = self.blueprint {
-            bp(&rec)?;
-        }
-
+        // Per-sensor RecordingStream — independent gRPC connections to
+        // the same recording_id. Camera bandwidth no longer shares a
+        // queue with LiDAR. The blueprint (if any) goes onto the first
+        // sensor's stream rather than a dedicated one — flush_blocking
+        // on a freshly-connected stream blocks the runner's static-init
+        // path indefinitely (rerun's gRPC client establishes lazily),
+        // and a dedicated short-lived blueprint stream tripped that hang.
+        let mut blueprint = self.blueprint;
         for bind in self.binds {
-            bind(&rec);
+            let rec = build_stream(&recording_id, &url)?;
+            if let Some(bp) = blueprint.take() {
+                bp(&rec)?;
+            }
+            bind(rec);
         }
         Ok(())
     }
+}
+
+fn build_stream(recording_id: &str, url: &str) -> eyre::Result<RecordingStream> {
+    Ok(RecordingStreamBuilder::new(APP_ID)
+        .recording_id(recording_id)
+        .connect_grpc_opts(url.to_string())?)
+}
+
+fn recording_id() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("isaac-sim-rs-{nanos}")
 }
 
 #[cfg(test)]
@@ -128,5 +155,12 @@ mod tests {
     fn builder_stores_blueprint_closure() {
         let v = Viewer::new().with_blueprint(|_rec| Ok(()));
         assert!(v.blueprint.is_some());
+    }
+
+    #[test]
+    fn recording_id_is_stable_per_call_format() {
+        let id = recording_id();
+        assert!(id.starts_with("isaac-sim-rs-"));
+        assert!(id.len() > "isaac-sim-rs-".len());
     }
 }

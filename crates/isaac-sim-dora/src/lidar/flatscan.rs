@@ -9,7 +9,14 @@ use isaac_sim_bridge::{
 };
 use parking_lot::Mutex;
 
+use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::DoraPublish;
+
+struct Frame {
+    depths: Vec<f32>,
+    intensities: Vec<u8>,
+    meta: LidarFlatScanMeta,
+}
 
 impl DoraPublish for LidarFlatScan {
     fn register(node: Arc<Mutex<DoraNode>>, source: String, output_id: String) {
@@ -25,13 +32,32 @@ pub fn register_dora_lidar_flatscan_publisher(
     let output: DataId = output_id.into().into();
     let filter = SourceFilter::exact(source.clone());
 
+    let (slot, wake) = LatestSlot::<Frame>::new();
+    let source_for_drain = source.clone();
+    let drain_name = format!("dora-drain-lidar_flatscan:{source}");
+    let _ = spawn_drain(&drain_name, slot.clone(), wake, move |frame| {
+        if let Err(e) = publish(
+            &node,
+            &output,
+            &frame.depths,
+            &frame.intensities,
+            &frame.meta,
+        ) {
+            log::warn!(
+                "[isaac-sim-dora] lidar_flatscan publish failed for '{source_for_drain}': {e}"
+            );
+        }
+    });
+
     register_lidar_flatscan_consumer(move |src, scan, intensities, meta| {
         if !filter.matches(src) {
             return;
         }
-        if let Err(e) = publish(&node, &output, scan, intensities, meta) {
-            log::warn!("[isaac-sim-dora] lidar_flatscan publish failed for '{source}': {e}");
-        }
+        slot.publish(Frame {
+            depths: scan.to_vec(),
+            intensities: intensities.to_vec(),
+            meta: *meta,
+        });
     });
 }
 

@@ -4784,6 +4784,7 @@ dependencies = [
 name = "isaac-sim-dora"
 version = "5.1.0-alpha.0"
 dependencies = [
+ "arc-swap",
  "arrow 54.3.1",
  "dora-node-api",
  "eyre",
@@ -4797,6 +4798,7 @@ dependencies = [
 name = "isaac-sim-rerun"
 version = "5.1.0-alpha.0"
 dependencies = [
+ "arc-swap",
  "bytemuck",
  "eyre",
  "isaac-sim-bridge",

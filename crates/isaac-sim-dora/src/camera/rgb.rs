@@ -7,7 +7,13 @@ use isaac_sim_arrow::camera::rgb::{to_record_batch, CameraRgb as ArrowCameraRgb}
 use isaac_sim_bridge::{register_camera_rgb_consumer, CameraRgb, CameraRgbMeta, SourceFilter};
 use parking_lot::Mutex;
 
+use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::DoraPublish;
+
+struct Frame {
+    pixels: Vec<u8>,
+    meta: CameraRgbMeta,
+}
 
 impl DoraPublish for CameraRgb {
     fn register(node: Arc<Mutex<DoraNode>>, source: String, output_id: String) {
@@ -23,13 +29,23 @@ pub fn register_dora_camera_rgb_publisher(
     let output: DataId = output_id.into().into();
     let filter = SourceFilter::exact(source.clone());
 
+    let (slot, wake) = LatestSlot::<Frame>::new();
+    let source_for_drain = source.clone();
+    let drain_name = format!("dora-drain-camera_rgb:{source}");
+    let _ = spawn_drain(&drain_name, slot.clone(), wake, move |frame| {
+        if let Err(e) = publish(&node, &output, &frame.pixels, &frame.meta) {
+            log::warn!("[isaac-sim-dora] camera_rgb publish failed for '{source_for_drain}': {e}");
+        }
+    });
+
     register_camera_rgb_consumer(move |src, pixels, meta| {
         if !filter.matches(src) {
             return;
         }
-        if let Err(e) = publish(&node, &output, pixels, meta) {
-            log::warn!("[isaac-sim-dora] camera_rgb publish failed for '{source}': {e}");
-        }
+        slot.publish(Frame {
+            pixels: pixels.to_vec(),
+            meta: *meta,
+        });
     });
 }
 

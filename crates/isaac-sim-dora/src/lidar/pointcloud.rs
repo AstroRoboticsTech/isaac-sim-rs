@@ -9,7 +9,13 @@ use isaac_sim_bridge::{
 };
 use parking_lot::Mutex;
 
+use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::DoraPublish;
+
+struct Frame {
+    points: Vec<f32>,
+    meta: LidarPointCloudMeta,
+}
 
 impl DoraPublish for LidarPointCloud {
     fn register(node: Arc<Mutex<DoraNode>>, source: String, output_id: String) {
@@ -25,13 +31,25 @@ pub fn register_dora_lidar_pointcloud_publisher(
     let output: DataId = output_id.into().into();
     let filter = SourceFilter::exact(source.clone());
 
+    let (slot, wake) = LatestSlot::<Frame>::new();
+    let source_for_drain = source.clone();
+    let drain_name = format!("dora-drain-lidar_pointcloud:{source}");
+    let _ = spawn_drain(&drain_name, slot.clone(), wake, move |frame| {
+        if let Err(e) = publish(&node, &output, &frame.points, &frame.meta) {
+            log::warn!(
+                "[isaac-sim-dora] lidar_pointcloud publish failed for '{source_for_drain}': {e}"
+            );
+        }
+    });
+
     register_lidar_pointcloud_consumer(move |src, points, meta| {
         if !filter.matches(src) {
             return;
         }
-        if let Err(e) = publish(&node, &output, points, meta) {
-            log::warn!("[isaac-sim-dora] lidar_pointcloud publish failed for '{source}': {e}");
-        }
+        slot.publish(Frame {
+            points: points.to_vec(),
+            meta: *meta,
+        });
     });
 }
 

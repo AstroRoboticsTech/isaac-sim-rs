@@ -26,6 +26,7 @@ pub use source::SourceFilter;
 
 #[cxx::bridge(namespace = "isaacsimrs")]
 mod ffi {
+    #[derive(Clone, Copy)]
     struct LidarFlatScanMeta {
         horizontal_fov: f32,
         horizontal_resolution: f32,
@@ -38,12 +39,14 @@ mod ffi {
         rotation_rate: f32,
     }
 
+    #[derive(Clone, Copy)]
     struct LidarPointCloudMeta {
         num_points: i32,
         width: i32,
         height: i32,
     }
 
+    #[derive(Clone, Copy)]
     struct CameraRgbMeta {
         width: i32,
         height: i32,

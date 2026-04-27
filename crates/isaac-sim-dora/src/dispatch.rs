@@ -1,0 +1,93 @@
+//! Latest-wins per-output pump for the dora adapter.
+//!
+//! Same shape as the rerun adapter's `dispatch`: publisher's
+//! `publish` is non-blocking, drain thread does the actual
+//! `node.send_output(...)`. This keeps the OG render thread
+//! independent of dora's serialise + Zenoh write path so a slow peer
+//! can never backpressure the simulator.
+//!
+//! Codifies audit P6 ("Mutex<DoraNode> lock contention") for the
+//! dora side. The shared `Arc<Mutex<DoraNode>>` is still held only
+//! inside the drain thread, where one drain per output serialises
+//! sends naturally; there is no contention with other sensors.
+
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::Arc;
+use std::thread;
+
+use arc_swap::ArcSwapOption;
+
+pub struct LatestSlot<T: Send + Sync + 'static> {
+    slot: ArcSwapOption<T>,
+    wake: SyncSender<()>,
+}
+
+impl<T: Send + Sync + 'static> LatestSlot<T> {
+    pub fn new() -> (Arc<Self>, Receiver<()>) {
+        let (tx, rx) = sync_channel::<()>(1);
+        let slot = Arc::new(Self {
+            slot: ArcSwapOption::const_empty(),
+            wake: tx,
+        });
+        (slot, rx)
+    }
+
+    pub fn publish(&self, value: T) {
+        self.slot.store(Some(Arc::new(value)));
+        let _ = self.wake.try_send(());
+    }
+
+    fn take(&self) -> Option<Arc<T>> {
+        self.slot.swap(None)
+    }
+}
+
+pub fn spawn_drain<T, F>(
+    name: &str,
+    slot: Arc<LatestSlot<T>>,
+    wake: Receiver<()>,
+    mut sink: F,
+) -> thread::JoinHandle<()>
+where
+    T: Send + Sync + 'static,
+    F: FnMut(Arc<T>) + Send + 'static,
+{
+    let name = name.to_string();
+    thread::Builder::new()
+        .name(name)
+        .spawn(move || {
+            while wake.recv().is_ok() {
+                while wake.try_recv().is_ok() {}
+                if let Some(v) = slot.take() {
+                    sink(v);
+                }
+            }
+        })
+        .expect("spawn dora drain thread")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    #[test]
+    fn drain_observes_published_values() {
+        let (slot, wake) = LatestSlot::<i32>::new();
+        let count = Arc::new(AtomicUsize::new(0));
+        let count_clone = Arc::clone(&count);
+        let _h = spawn_drain("test-drain", Arc::clone(&slot), wake, move |_v| {
+            count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+        slot.publish(1);
+        slot.publish(2);
+        for _ in 0..50 {
+            if count.load(Ordering::SeqCst) > 0 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert!(count.load(Ordering::SeqCst) >= 1);
+    }
+}

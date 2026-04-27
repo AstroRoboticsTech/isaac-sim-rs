@@ -1,7 +1,13 @@
 use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloud, LidarPointCloudMeta};
 use rerun::{Points3D, RecordingStream};
 
+use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::RerunRender;
+
+struct Frame {
+    points: Vec<f32>,
+    meta: LidarPointCloudMeta,
+}
 
 impl RerunRender for LidarPointCloud {
     fn register(rec: RecordingStream, source: String, entity_path: String) {
@@ -30,13 +36,27 @@ pub fn register_rerun_lidar_pointcloud_publisher(
     entity_path: String,
 ) {
     let filter = isaac_sim_bridge::SourceFilter::exact(source.clone());
+    let (slot, wake) = LatestSlot::<Frame>::new();
+    let entity_path_for_drain = entity_path.clone();
+    let source_for_drain = source.clone();
+    let drain_name = format!("rerun-drain-lidar_pointcloud:{source}");
+    let _ = spawn_drain(&drain_name, slot.clone(), wake, move |frame| {
+        if let Err(e) =
+            log_lidar_pointcloud(&rec, &entity_path_for_drain, &frame.points, &frame.meta)
+        {
+            log::warn!(
+                "[isaac-sim-rerun] log failed for '{source_for_drain}' -> '{entity_path_for_drain}': {e}"
+            );
+        }
+    });
     register_lidar_pointcloud_consumer(move |src, points, meta| {
         if !filter.matches(src) {
             return;
         }
-        if let Err(e) = log_lidar_pointcloud(&rec, &entity_path, points, meta) {
-            log::warn!("[isaac-sim-rerun] log failed for '{source}' -> '{entity_path}': {e}");
-        }
+        slot.publish(Frame {
+            points: points.to_vec(),
+            meta: *meta,
+        });
     });
 }
 

@@ -1,7 +1,15 @@
 use isaac_sim_bridge::{register_camera_rgb_consumer, CameraRgb, CameraRgbMeta};
 use rerun::{Image, RecordingStream};
 
+use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::RerunRender;
+
+/// One camera frame snapshotted at the OG render thread for handoff
+/// to the drain thread. The `pixels` Vec is allocated per dispatch.
+struct Frame {
+    pixels: Vec<u8>,
+    meta: CameraRgbMeta,
+}
 
 impl RerunRender for CameraRgb {
     fn register(rec: RecordingStream, source: String, entity_path: String) {
@@ -40,13 +48,25 @@ pub fn register_rerun_camera_rgb_publisher(
     entity_path: String,
 ) {
     let filter = isaac_sim_bridge::SourceFilter::exact(source.clone());
+    let (slot, wake) = LatestSlot::<Frame>::new();
+    let entity_path_for_drain = entity_path.clone();
+    let source_for_drain = source.clone();
+    let drain_name = format!("rerun-drain-camera_rgb:{source}");
+    let _ = spawn_drain(&drain_name, slot.clone(), wake, move |frame| {
+        if let Err(e) = log_camera_rgb(&rec, &entity_path_for_drain, &frame.pixels, &frame.meta) {
+            log::warn!(
+                "[isaac-sim-rerun] log failed for '{source_for_drain}' -> '{entity_path_for_drain}': {e}"
+            );
+        }
+    });
     register_camera_rgb_consumer(move |src, pixels, meta| {
         if !filter.matches(src) {
             return;
         }
-        if let Err(e) = log_camera_rgb(&rec, &entity_path, pixels, meta) {
-            log::warn!("[isaac-sim-rerun] log failed for '{source}' -> '{entity_path}': {e}");
-        }
+        slot.publish(Frame {
+            pixels: pixels.to_vec(),
+            meta: *meta,
+        });
     });
 }
 

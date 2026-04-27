@@ -1,7 +1,14 @@
 use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScan, LidarFlatScanMeta};
 use rerun::{Color, Points3D, RecordingStream};
 
+use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::RerunRender;
+
+struct Frame {
+    depths: Vec<f32>,
+    intensities: Vec<u8>,
+    meta: LidarFlatScanMeta,
+}
 
 impl RerunRender for LidarFlatScan {
     fn register(rec: RecordingStream, source: String, entity_path: String) {
@@ -75,13 +82,32 @@ pub fn register_rerun_lidar_flatscan_publisher(
     entity_path: String,
 ) {
     let filter = isaac_sim_bridge::SourceFilter::exact(source.clone());
+    let (slot, wake) = LatestSlot::<Frame>::new();
+    let entity_path_for_drain = entity_path.clone();
+    let source_for_drain = source.clone();
+    let drain_name = format!("rerun-drain-lidar_flatscan:{source}");
+    let _ = spawn_drain(&drain_name, slot.clone(), wake, move |frame| {
+        if let Err(e) = log_lidar_flatscan(
+            &rec,
+            &entity_path_for_drain,
+            &frame.depths,
+            &frame.intensities,
+            &frame.meta,
+        ) {
+            log::warn!(
+                "[isaac-sim-rerun] log failed for '{source_for_drain}' -> '{entity_path_for_drain}': {e}"
+            );
+        }
+    });
     register_lidar_flatscan_consumer(move |src, scan, intensities, meta| {
         if !filter.matches(src) {
             return;
         }
-        if let Err(e) = log_lidar_flatscan(&rec, &entity_path, scan, intensities, meta) {
-            log::warn!("[isaac-sim-rerun] log failed for '{source}' -> '{entity_path}': {e}");
-        }
+        slot.publish(Frame {
+            depths: scan.to_vec(),
+            intensities: intensities.to_vec(),
+            meta: *meta,
+        });
     });
 }
 

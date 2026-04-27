@@ -1,4 +1,4 @@
-"""Drive both 2D and 3D RTX LiDAR streams through the bridge.
+"""Drive 2D + 3D RTX LiDAR and an RGB camera through the bridge.
 
 2D FlatScan uses og.Controller.connect because the FlatScan
 annotator's on_attach_callback wires SdOnNewRenderProductFrame
@@ -8,16 +8,24 @@ into the FlatScan node — exec propagates without a NodeWriter.
 accumulating IsaacCreateRTXLidarScanBuffer annotator (full rotation
 per output). The NoAccumulator variant emits a per-frame wedge
 instead and visually spins.
+
+Camera RGB also uses register_node_writer_with_telemetry, against
+the IsaacConvertRGBAToRGB annotator chain (RTX renderer LDR colour
+buffer -> RGBA -> RGB). The annotator's rendervar prefix is
+LdrColorSD, mirroring NVIDIA's ROS2 image bridge wiring.
 """
 
 import omni.graph.core as og
 import omni.replicator.core as rep
+import omni.syntheticdata._syntheticdata as sd
 import omni.timeline
 import omni.usd
 from isaacsim.core.api import World
 from isaacsim.core.nodes.scripts.utils import register_node_writer_with_telemetry
 from isaacsim.core.utils.stage import add_reference_to_stage, open_stage
+from isaacsim.sensors.camera import Camera
 from isaacsim.sensors.rtx import LidarRtx
+from omni.syntheticdata import SyntheticData
 
 ASSETS_ROOT = "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1"
 WAREHOUSE_USD = f"{ASSETS_ROOT}/Isaac/Environments/Simple_Warehouse/warehouse.usd"
@@ -28,6 +36,8 @@ CARTER_PRIM = f"{SCENE_ROOT}/Carter"
 LIDAR_2D_PRIM = f"{CARTER_PRIM}/chassis_link/lidar_2d"
 LIDAR_2D_CONFIG = "Example_Rotary_2D"
 LIDAR_3D_PRIM = f"{CARTER_PRIM}/chassis_link/sensors/XT_32/PandarXT_32_10hz"
+CAMERA_RGB_PRIM = f"{CARTER_PRIM}/chassis_link/camera_rgb"
+CAMERA_RGB_RESOLUTION = (640, 480)
 
 FLATSCAN_PORTS = (
     "exec",
@@ -69,6 +79,13 @@ lidar_2d = world.scene.add(
 lidar_3d = world.scene.add(
     LidarRtx(prim_path=LIDAR_3D_PRIM, name="rerun_demo_lidar_3d")
 )
+camera_rgb = Camera(
+    prim_path=CAMERA_RGB_PRIM,
+    name="rerun_demo_camera_rgb",
+    resolution=CAMERA_RGB_RESOLUTION,
+    translation=[0.3, 0.0, 0.2],
+    orientation=[1.0, 0.0, 0.0, 0.0],
+)
 world.reset()
 
 lidar_2d.attach_annotator("IsaacComputeRTXLidarFlatScan")
@@ -104,5 +121,23 @@ pointcloud_writer = rep.WriterRegistry.get("PublishLidarPointCloudToRust")
 pointcloud_writer.initialize(sourceId=LIDAR_3D_PRIM)
 pointcloud_writer.attach([lidar_3d.get_render_product_path()])
 
+# Camera RGB. The Camera object creates and attaches a render product;
+# initialize() also attaches the standard `rgb` annotator which the
+# IsaacConvertRGBAToRGB downstream annotator (LdrColorSD prefix) reads.
+camera_rgb.initialize()
+camera_rgb_rendervar = SyntheticData.convert_sensor_type_to_rendervar(sd.SensorType.Rgb.name)
+camera_rgb_writer_name = f"{camera_rgb_rendervar}PublishCameraRgbToRust"
+register_node_writer_with_telemetry(
+    name=camera_rgb_writer_name,
+    node_type_id="omni.isaacsimrs.bridge.PublishCameraRgbToRust",
+    annotators=[f"{camera_rgb_rendervar}IsaacConvertRGBAToRGB"],
+    category="omni.isaacsimrs.bridge",
+)
+camera_rgb_writer = rep.WriterRegistry.get(camera_rgb_writer_name)
+camera_rgb_writer.initialize(sourceId=CAMERA_RGB_PRIM)
+camera_rgb_writer.attach([camera_rgb.get_render_product_path()])
+
 omni.timeline.get_timeline_interface().play()
-print("[og_lidar_drive] 2D FlatScan + 3D PointCloud wired; timeline playing")
+print(
+    "[og_drive] 2D FlatScan + 3D PointCloud + RGB camera wired; timeline playing"
+)

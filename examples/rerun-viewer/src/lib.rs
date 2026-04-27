@@ -1,4 +1,4 @@
-use isaac_sim_bridge::{LidarFlatScan, LidarPointCloud};
+use isaac_sim_bridge::{CameraRgb, LidarFlatScan, LidarPointCloud};
 use isaac_sim_rerun::Viewer;
 
 #[unsafe(no_mangle)]
@@ -26,6 +26,11 @@ fn try_init() -> eyre::Result<()> {
             "/Root/World/Carter/chassis_link/sensors/XT_32/PandarXT_32_10hz",
             "scene/lidar/pointcloud",
         )
+        .with_source(
+            CameraRgb,
+            "/Root/World/Carter/chassis_link/camera_rgb",
+            "scene/camera/rgb",
+        )
         .with_blueprint(|rec| {
             rec.log_static(
                 "scene/lidar/flatscan",
@@ -37,6 +42,12 @@ fn try_init() -> eyre::Result<()> {
                 "scene/lidar/pointcloud",
                 &rerun::TextDocument::new(
                     "3D RTX LiDAR (PandarXT_32_10hz) — Carter's built-in sensor, 32-channel.",
+                ),
+            )?;
+            rec.log_static(
+                "scene/camera/rgb",
+                &rerun::TextDocument::new(
+                    "Forward-facing RGB camera mounted on Carter chassis (LdrColor render product).",
                 ),
             )?;
             Ok(())

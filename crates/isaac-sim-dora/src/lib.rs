@@ -5,6 +5,7 @@
 //! a consumer that converts the data to an Apache Arrow `RecordBatch`
 //! (via `isaac-sim-arrow`) and emits it on a dora node output.
 
+pub mod camera;
 pub mod ffi;
 pub mod lidar;
 pub mod sensor;

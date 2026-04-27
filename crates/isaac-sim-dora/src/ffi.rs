@@ -2,7 +2,7 @@ use std::env;
 use std::sync::Arc;
 
 use dora_node_api::DoraNode;
-use isaac_sim_bridge::{LidarFlatScan, LidarPointCloud};
+use isaac_sim_bridge::{CameraRgb, LidarFlatScan, LidarPointCloud};
 use parking_lot::Mutex;
 
 use crate::sensor::DoraPublish;
@@ -24,6 +24,7 @@ fn try_init() -> eyre::Result<()> {
 
     register_publisher::<LidarFlatScan>(Arc::clone(&node));
     register_publisher::<LidarPointCloud>(Arc::clone(&node));
+    register_publisher::<CameraRgb>(Arc::clone(&node));
 
     Ok(())
 }

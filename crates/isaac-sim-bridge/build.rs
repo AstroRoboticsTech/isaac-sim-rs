@@ -13,4 +13,6 @@ fn main() {
     println!("cargo:rerun-if-changed=src/lidar/mod.rs");
     println!("cargo:rerun-if-changed=src/lidar/flatscan.rs");
     println!("cargo:rerun-if-changed=src/lidar/pointcloud.rs");
+    println!("cargo:rerun-if-changed=src/camera/mod.rs");
+    println!("cargo:rerun-if-changed=src/camera/rgb.rs");
 }

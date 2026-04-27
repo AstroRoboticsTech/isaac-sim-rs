@@ -1,3 +1,4 @@
+pub mod camera;
 pub mod lidar;
 pub mod sensor;
 pub mod viewer;

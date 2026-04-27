@@ -1,4 +1,5 @@
 mod articulation;
+mod camera;
 mod channel;
 mod demo;
 mod lidar;
@@ -8,6 +9,9 @@ mod sensor;
 mod source;
 
 pub use articulation::cmd_vel::{cmd_vel_producer_count, register_cmd_vel_producer, CmdVelChannel};
+pub use camera::rgb::{
+    camera_rgb_consumer_count, dispatch_camera_rgb, register_camera_rgb_consumer, CameraRgb,
+};
 pub use lidar::flatscan::{
     dispatch_lidar_flatscan, lidar_flatscan_consumer_count, register_lidar_flatscan_consumer,
     LidarFlatScan,
@@ -40,6 +44,16 @@ mod ffi {
         height: i32,
     }
 
+    struct CameraRgbMeta {
+        width: i32,
+        height: i32,
+        fx: f32,
+        fy: f32,
+        cx: f32,
+        cy: f32,
+        timestamp_ns: i64,
+    }
+
     #[derive(Default, Clone, Copy)]
     struct CmdVel {
         linear_x: f32,
@@ -61,13 +75,15 @@ mod ffi {
             meta: &LidarFlatScanMeta,
         );
         fn forward_lidar_pointcloud(source_id: &str, points: &[f32], meta: &LidarPointCloudMeta);
+        fn forward_camera_rgb(source_id: &str, pixels: &[u8], meta: &CameraRgbMeta);
         fn poll_cmd_vel(target_id: &str, out: &mut CmdVel) -> bool;
     }
 }
 
-pub use ffi::{CmdVel, LidarFlatScanMeta, LidarPointCloudMeta};
+pub use ffi::{CameraRgbMeta, CmdVel, LidarFlatScanMeta, LidarPointCloudMeta};
 
 use articulation::cmd_vel::poll_cmd_vel;
+use camera::rgb::forward_camera_rgb;
 use demo::double_value;
 use lidar::flatscan::forward_lidar_flatscan;
 use lidar::pointcloud::forward_lidar_pointcloud;

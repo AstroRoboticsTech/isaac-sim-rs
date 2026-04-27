@@ -1,5 +1,6 @@
 #include "OgnPublishLidarPointCloudToRustDatabase.h"
 #include "isaacsimrs/forward.hpp"
+#include <carb/logging/Log.h>
 #include <cuda_runtime.h>
 #include <cstddef>
 #include <cstdint>
@@ -28,16 +29,29 @@ public:
         const float* host_ptr = nullptr;
         static thread_local std::vector<float> staging;
 
+
         if (cuda_idx == -1) {
             host_ptr = reinterpret_cast<const float*>(data_ptr);
         } else {
+            // Multi-GPU rigs: the buffer lives on cuda_idx, not necessarily
+            // device 0. Setting the current device before cudaMemcpy makes
+            // the copy resolve against the correct context.
+            if (auto rc = cudaSetDevice(cuda_idx); rc != cudaSuccess) {
+                CARB_LOG_ERROR(
+                    "[OgnPublishLidarPointCloudToRust] cudaSetDevice(%d) failed: %s",
+                    cuda_idx, cudaGetErrorString(rc));
+                return false;
+            }
             staging.resize(num_floats);
-            const auto rc = cudaMemcpy(
-                staging.data(),
-                reinterpret_cast<const void*>(data_ptr),
-                buffer_size,
-                cudaMemcpyDeviceToHost);
-            if (rc != cudaSuccess) {
+            if (auto rc = cudaMemcpy(
+                    staging.data(),
+                    reinterpret_cast<const void*>(data_ptr),
+                    buffer_size,
+                    cudaMemcpyDeviceToHost);
+                rc != cudaSuccess) {
+                CARB_LOG_ERROR(
+                    "[OgnPublishLidarPointCloudToRust] cudaMemcpy DtoH failed (cuda=%d size=%zu): %s",
+                    cuda_idx, static_cast<std::size_t>(buffer_size), cudaGetErrorString(rc));
                 return false;
             }
             host_ptr = staging.data();

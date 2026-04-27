@@ -4,7 +4,7 @@ use arrow::array::StructArray;
 use dora_node_api::dora_core::config::DataId;
 use dora_node_api::{DoraNode, MetadataParameters};
 use isaac_sim_arrow::lidar::pointcloud::{to_record_batch, LidarPointCloud};
-use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloudMeta};
+use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloudMeta, SourceFilter};
 
 pub fn register_dora_lidar_pointcloud_publisher(
     node: Arc<Mutex<DoraNode>>,
@@ -12,9 +12,10 @@ pub fn register_dora_lidar_pointcloud_publisher(
     output_id: impl Into<String>,
 ) {
     let output: DataId = output_id.into().into();
+    let filter = SourceFilter::exact(source.clone());
 
     register_lidar_pointcloud_consumer(move |src, points, meta| {
-        if src != source {
+        if !filter.matches(src) {
             return;
         }
         if let Err(e) = publish(&node, &output, points, meta) {

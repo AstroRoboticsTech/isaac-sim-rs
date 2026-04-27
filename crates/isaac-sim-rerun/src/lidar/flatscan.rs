@@ -45,8 +45,9 @@ pub fn register_rerun_lidar_flatscan_publisher(
     source: String,
     entity_path: String,
 ) {
+    let filter = isaac_sim_bridge::SourceFilter::exact(source.clone());
     register_lidar_flatscan_consumer(move |src, scan, intensities, meta| {
-        if src != source {
+        if !filter.matches(src) {
             return;
         }
         if let Err(e) = log_lidar_flatscan(&rec, &entity_path, scan, intensities, meta) {

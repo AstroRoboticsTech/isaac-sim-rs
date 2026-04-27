@@ -21,8 +21,9 @@ pub fn register_rerun_lidar_pointcloud_publisher(
     source: String,
     entity_path: String,
 ) {
+    let filter = isaac_sim_bridge::SourceFilter::exact(source.clone());
     register_lidar_pointcloud_consumer(move |src, points, meta| {
-        if src != source {
+        if !filter.matches(src) {
             return;
         }
         if let Err(e) = log_lidar_pointcloud(&rec, &entity_path, points, meta) {

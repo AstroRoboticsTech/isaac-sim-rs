@@ -2,6 +2,7 @@ mod channel;
 mod demo;
 mod lidar;
 mod lifecycle;
+mod source;
 
 pub use lidar::flatscan::{
     dispatch_lidar_flatscan, lidar_flatscan_consumer_count, register_lidar_flatscan_consumer,
@@ -9,6 +10,7 @@ pub use lidar::flatscan::{
 pub use lidar::pointcloud::{
     dispatch_lidar_pointcloud, lidar_pointcloud_consumer_count, register_lidar_pointcloud_consumer,
 };
+pub use source::SourceFilter;
 
 #[cxx::bridge(namespace = "isaacsimrs")]
 mod ffi {

@@ -4,19 +4,18 @@ use arrow::array::StructArray;
 use dora_node_api::dora_core::config::DataId;
 use dora_node_api::{DoraNode, MetadataParameters};
 use isaac_sim_arrow::lidar::flatscan::{to_record_batch, LidarFlatScan};
-use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScanMeta};
+use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScanMeta, SourceFilter};
 
-/// Register a dora publisher that filters by `source` and emits
-/// matching scans on `output_id`.
 pub fn register_dora_lidar_flatscan_publisher(
     node: Arc<Mutex<DoraNode>>,
     source: String,
     output_id: impl Into<String>,
 ) {
     let output: DataId = output_id.into().into();
+    let filter = SourceFilter::exact(source.clone());
 
     register_lidar_flatscan_consumer(move |src, scan, intensities, meta| {
-        if src != source {
+        if !filter.matches(src) {
             return;
         }
         if let Err(e) = publish(&node, &output, scan, intensities, meta) {

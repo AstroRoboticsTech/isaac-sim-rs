@@ -1,0 +1,25 @@
+{
+    "PublishOdometryToRust": {
+        "version": 1,
+        "language": "C++",
+        "description": "Forwards chassis odometry (world-frame position + orientation, body-frame linear and angular velocities) to a Rust subscriber via FFI. Mirrors NVIDIA's isaacsim.ros2.bridge.ROS2PublishOdometry input contract so the standard upstream graph (IsaacComputeOdometry on the chassis articulation root) wires into either publisher. Set sourceId to the chassis prim path so adapters can route per-source.",
+        "metadata": {
+            "categories": ["Sensor"],
+            "keywords": ["odometry", "chassis", "pose", "rust", "ffi"]
+        },
+        "inputs": {
+            "execIn": {"type": "execution", "description": "Trigger when an odometry sample is ready (typically wired from IsaacComputeOdometry.outputs:execOut)"},
+            "sourceId": {"type": "string", "default": "", "description": "Chassis prim path (or any user-chosen identifier) used by adapters to route per-source"},
+            "chassisFrameId": {"type": "string", "default": "base_link", "description": "ROS-style frame id for the robot chassis frame; forwarded verbatim to adapters"},
+            "odomFrameId": {"type": "string", "default": "odom", "description": "ROS-style frame id for the (drifting) odometry world frame; forwarded verbatim to adapters"},
+            "position": {"type": "vectord[3]", "default": [0.0, 0.0, 0.0], "description": "World-frame chassis position in metres. Wire from IsaacComputeOdometry.outputs:position"},
+            "orientation": {"type": "quatd[4]", "default": [1.0, 0.0, 0.0, 0.0], "description": "World-frame chassis orientation as a quaternion (w, x, y, z). Wire from IsaacComputeOdometry.outputs:orientation"},
+            "linearVelocity": {"type": "vectord[3]", "default": [0.0, 0.0, 0.0], "description": "Body-frame linear velocity in m/s. Wire from IsaacComputeOdometry.outputs:linearVelocity (pre-projected) — not globalLinearVelocity"},
+            "angularVelocity": {"type": "vectord[3]", "default": [0.0, 0.0, 0.0], "description": "Body-frame angular velocity in rad/s. Wire from IsaacComputeOdometry.outputs:angularVelocity"},
+            "timeStamp": {"type": "double", "default": 0.0, "description": "Capture time in seconds. Wire from IsaacReadSimulationTime.outputs:simulationTime"}
+        },
+        "outputs": {
+            "execOut": {"type": "execution", "description": "Fires after the Rust forwarder has been called"}
+        }
+    }
+}

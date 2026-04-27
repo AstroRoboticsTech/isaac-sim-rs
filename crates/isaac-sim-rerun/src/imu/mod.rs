@@ -15,11 +15,7 @@ impl RerunRender for Imu {
     }
 }
 
-pub fn log_imu(
-    rec: &RecordingStream,
-    entity_path: &str,
-    meta: &ImuMeta,
-) -> eyre::Result<()> {
+pub fn log_imu(rec: &RecordingStream, entity_path: &str, meta: &ImuMeta) -> eyre::Result<()> {
     rec.log(
         format!("{entity_path}/lin_acc/x"),
         &Scalars::single(meta.lin_acc_x),
@@ -55,11 +51,7 @@ pub fn log_imu(
     Ok(())
 }
 
-pub fn register_rerun_imu_publisher(
-    rec: RecordingStream,
-    source: String,
-    entity_path: String,
-) {
+pub fn register_rerun_imu_publisher(rec: RecordingStream, source: String, entity_path: String) {
     let filter = isaac_sim_bridge::SourceFilter::exact(source.clone());
     let (slot, wake) = LatestSlot::<Frame>::new();
     let entity_path_for_drain = entity_path.clone();

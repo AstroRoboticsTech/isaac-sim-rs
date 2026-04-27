@@ -53,6 +53,10 @@ LIDAR_3D_PRIM = f"{CARTER_PRIM}/chassis_link/sensors/XT_32/PandarXT_32_10hz"
 CAMERA_RGB_PRIM = f"{CARTER_PRIM}/chassis_link/camera_rgb"
 CAMERA_RGB_RESOLUTION = (640, 480)
 IMU_PRIM = f"{CARTER_PRIM}/chassis_link/imu"
+# IsaacComputeOdometry needs a rigid body or articulation root; the
+# top-level Carter reference prim is not one. The chassis_link rigid
+# body is the canonical chassis frame for Nova Carter.
+CHASSIS_PRIM = f"{CARTER_PRIM}/chassis_link"
 
 FLATSCAN_PORTS = (
     "exec",
@@ -257,8 +261,43 @@ og.Controller.set(
     og.Controller.attribute(f"{publish_imu_path}.inputs:frameId"), "sim_imu"
 )
 
+# Odometry. IsaacComputeOdometry reads world-frame pose + body-frame
+# velocities directly off the chassis articulation root. Same wiring
+# topology as the IMU chain: sample at the FlatScan exec cadence.
+odom_graph_path = flat_scan.get_graph().get_path_to_graph()
+compute_odom_path = f"{odom_graph_path}/IsaacComputeOdometry"
+publish_odom_path = f"{odom_graph_path}/PublishOdometryToRust"
+og.Controller.create_node(
+    compute_odom_path, "isaacsim.core.nodes.IsaacComputeOdometry"
+)
+og.Controller.create_node(
+    publish_odom_path, "omni.isaacsimrs.bridge.PublishOdometryToRust"
+)
+og.Controller.set(
+    og.Controller.attribute(f"{compute_odom_path}.inputs:chassisPrim"),
+    [CHASSIS_PRIM],
+)
+og.Controller.connect(
+    flat_scan.get_attribute("outputs:exec"),
+    f"{compute_odom_path}.inputs:execIn",
+)
+for src, dst in (
+    ("execOut", "execIn"),
+    ("position", "position"),
+    ("orientation", "orientation"),
+    ("linearVelocity", "linearVelocity"),
+    ("angularVelocity", "angularVelocity"),
+):
+    og.Controller.connect(
+        f"{compute_odom_path}.outputs:{src}",
+        f"{publish_odom_path}.inputs:{dst}",
+    )
+og.Controller.set(
+    og.Controller.attribute(f"{publish_odom_path}.inputs:sourceId"), CHASSIS_PRIM
+)
+
 omni.timeline.get_timeline_interface().play()
 print(
-    "[og_drive] 2D FlatScan + 3D PointCloud + RGB + Depth + CameraInfo + IMU "
-    "wired; timeline playing"
+    "[og_drive] 2D FlatScan + 3D PointCloud + RGB + Depth + CameraInfo + IMU + "
+    "Odometry wired; timeline playing"
 )

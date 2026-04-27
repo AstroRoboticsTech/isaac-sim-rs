@@ -5,6 +5,7 @@ mod demo;
 mod imu;
 mod lidar;
 mod lifecycle;
+mod odometry;
 mod producer;
 mod sensor;
 mod source;
@@ -28,6 +29,9 @@ pub use lidar::flatscan::{
 pub use lidar::pointcloud::{
     dispatch_lidar_pointcloud, lidar_pointcloud_consumer_count, register_lidar_pointcloud_consumer,
     LidarPointCloud,
+};
+pub use odometry::{
+    dispatch_odometry, odometry_consumer_count, register_odometry_consumer, Odometry,
 };
 pub use producer::{ProducerRegistry, ProducerSlot};
 pub use sensor::Sensor;
@@ -100,6 +104,24 @@ mod ffi {
         timestamp_ns: i64,
     }
 
+    #[derive(Clone, Copy)]
+    struct OdometryMeta {
+        position_x: f64,
+        position_y: f64,
+        position_z: f64,
+        orientation_w: f64,
+        orientation_x: f64,
+        orientation_y: f64,
+        orientation_z: f64,
+        lin_vel_x: f64,
+        lin_vel_y: f64,
+        lin_vel_z: f64,
+        ang_vel_x: f64,
+        ang_vel_y: f64,
+        ang_vel_z: f64,
+        timestamp_ns: i64,
+    }
+
     #[derive(Default, Clone, Copy)]
     struct CmdVel {
         linear_x: f32,
@@ -135,21 +157,28 @@ mod ffi {
             meta: &CameraInfoMeta,
         );
         fn forward_imu(source_id: &str, frame_id: &str, meta: &ImuMeta);
+        fn forward_odometry(
+            source_id: &str,
+            chassis_frame_id: &str,
+            odom_frame_id: &str,
+            meta: &OdometryMeta,
+        );
         fn poll_cmd_vel(target_id: &str, out: &mut CmdVel) -> bool;
     }
 }
 
 pub use ffi::{
     CameraDepthMeta, CameraInfoMeta, CameraRgbMeta, CmdVel, ImuMeta, LidarFlatScanMeta,
-    LidarPointCloudMeta,
+    LidarPointCloudMeta, OdometryMeta,
 };
 
 use articulation::cmd_vel::poll_cmd_vel;
 use camera::depth::forward_camera_depth;
 use camera::info::forward_camera_info;
 use camera::rgb::forward_camera_rgb;
-use imu::forward_imu;
 use demo::double_value;
+use imu::forward_imu;
 use lidar::flatscan::forward_lidar_flatscan;
 use lidar::pointcloud::forward_lidar_pointcloud;
 use lifecycle::init;
+use odometry::forward_odometry;

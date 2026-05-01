@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloud, LidarPointCloudMeta};
 use rerun::{Points3D, RecordingStream};
 
@@ -5,7 +7,7 @@ use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::RerunRender;
 
 struct Frame {
-    points: Vec<f32>,
+    points: Arc<[f32]>,
     meta: LidarPointCloudMeta,
 }
 
@@ -54,7 +56,7 @@ pub fn register_rerun_lidar_pointcloud_publisher(
             return;
         }
         slot.publish(Frame {
-            points: points.to_vec(),
+            points: Arc::from(points),
             meta: *meta,
         });
     });

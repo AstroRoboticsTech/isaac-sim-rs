@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use isaac_sim_bridge::{register_camera_depth_consumer, CameraDepth, CameraDepthMeta};
 use rerun::{datatypes::ChannelDatatype, DepthImage, RecordingStream};
 
@@ -5,7 +7,7 @@ use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::RerunRender;
 
 struct Frame {
-    depths: Vec<f32>,
+    depths: Arc<[f32]>,
     meta: CameraDepthMeta,
 }
 
@@ -72,7 +74,7 @@ pub fn register_rerun_camera_depth_publisher(
             return;
         }
         slot.publish(Frame {
-            depths: depths.to_vec(),
+            depths: Arc::from(depths),
             meta: *meta,
         });
     });

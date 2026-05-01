@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScan, LidarFlatScanMeta};
 use rerun::{Color, Points3D, RecordingStream};
 
@@ -5,8 +7,8 @@ use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::RerunRender;
 
 struct Frame {
-    depths: Vec<f32>,
-    intensities: Vec<u8>,
+    depths: Arc<[f32]>,
+    intensities: Arc<[u8]>,
     meta: LidarFlatScanMeta,
 }
 
@@ -104,8 +106,8 @@ pub fn register_rerun_lidar_flatscan_publisher(
             return;
         }
         slot.publish(Frame {
-            depths: scan.to_vec(),
-            intensities: intensities.to_vec(),
+            depths: Arc::from(scan),
+            intensities: Arc::from(intensities),
             meta: *meta,
         });
     });

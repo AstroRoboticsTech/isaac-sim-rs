@@ -1,13 +1,13 @@
+use std::sync::Arc;
+
 use isaac_sim_bridge::{register_camera_rgb_consumer, CameraRgb, CameraRgbMeta};
 use rerun::{Image, RecordingStream};
 
 use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::RerunRender;
 
-/// One camera frame snapshotted at the OG render thread for handoff
-/// to the drain thread. The `pixels` Vec is allocated per dispatch.
 struct Frame {
-    pixels: Vec<u8>,
+    pixels: Arc<[u8]>,
     meta: CameraRgbMeta,
 }
 
@@ -64,7 +64,7 @@ pub fn register_rerun_camera_rgb_publisher(
             return;
         }
         slot.publish(Frame {
-            pixels: pixels.to_vec(),
+            pixels: Arc::from(pixels),
             meta: *meta,
         });
     });

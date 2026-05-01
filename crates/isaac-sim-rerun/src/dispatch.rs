@@ -63,11 +63,18 @@ impl<T: Send + Sync + 'static> LatestSlot<T> {
     }
 }
 
-/// Spawn a drain thread that pulls the latest value out of `slot`
-/// each time the wake channel fires and hands it to `sink`. The
-/// thread runs until the slot is dropped (i.e. all `Arc` refs are
-/// gone — the wake channel disconnects and `wake.recv()` returns
-/// `Err`).
+/// Spawn a drain thread that forwards the latest slot value to `sink`.
+///
+/// Ordering: `publish` atomically stores the new value then sends a wake.
+/// The drain unblocks on that wake, drains any additional wakes via
+/// `try_recv` (coalescing burst publishes into one read), then calls
+/// `slot.take()` which atomically swaps the slot to `None`. If a new
+/// `publish` races in during that window, the bounded wake channel already
+/// has capacity and the next `recv()` fires immediately, guaranteeing no
+/// value is silently dropped — worst case is one extra round-trip of
+/// latency. The `arc_swap::ArcSwapOption::swap(None)` inside `take` is
+/// the load-bearing atomic. The thread exits when all `Arc` refs to the
+/// slot are dropped (wake channel disconnects, `wake.recv()` returns `Err`).
 pub fn spawn_drain<T, F>(
     name: &str,
     slot: Arc<LatestSlot<T>>,
@@ -83,9 +90,6 @@ where
         .name(name)
         .spawn(move || {
             while wake.recv().is_ok() {
-                // Drain any extra wakes piled up while we were busy.
-                // We only care about the most recent value; the slot
-                // itself already enforces latest-wins.
                 while wake.try_recv().is_ok() {}
                 if let Some(v) = slot.take() {
                     sink(v);

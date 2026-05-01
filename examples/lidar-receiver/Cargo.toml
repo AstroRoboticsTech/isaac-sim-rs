@@ -1,14 +1,16 @@
+[workspace]
+
 [package]
 name = "example-dora-lidar-receiver"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-rust-version.workspace = true
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+repository = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+rust-version = "1.85"
 description = "Example: subscribe to a LiDAR stream from Isaac Sim (running as a dora source via the omni.isaacsimrs.bridge extension + isaac-sim-dora cdylib) and print a one-line summary per scan."
 publish = false
 
 [dependencies]
-arrow = { workspace = true }
+arrow = "54"
 dora-node-api = { version = "0.5", features = ["tracing"] }
 eyre = "0.6"

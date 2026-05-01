@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Bridge runner the Carb plugin dlopens via
 //! `ISAAC_SIM_RS_RERUN_RUNNER`. Sensor entities are organized as
 //! children of a single `chassis` entity so a Transform3D logged at

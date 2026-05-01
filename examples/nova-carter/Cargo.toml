@@ -1,10 +1,12 @@
+[workspace]
+
 [package]
 name = "example-nova-carter"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-rust-version.workspace = true
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+repository = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+rust-version = "1.85"
 description = "Example: Nova Carter end-to-end demo. Bridge-loaded cdylib that opens a rerun viewer, subscribes every sensor publisher (2D + 3D LiDAR, RGB + depth camera + camera info, IMU, chassis odometry), and drives Carter with a synthetic cmd_vel publisher so the robot visibly arcs through the warehouse."
 publish = false
 
@@ -14,7 +16,7 @@ crate-type = ["cdylib"]
 [dependencies]
 isaac-sim-bridge = { path = "../../crates/isaac-sim-bridge" }
 isaac-sim-rerun = { path = "../../crates/isaac-sim-rerun" }
-rerun = { workspace = true }
+rerun = "0.31"
 eyre = "0.6"
-log = { workspace = true }
+log = "0.4"
 env_logger = "0.11"

@@ -26,6 +26,8 @@ tests/cpp/**/build/
 #.idea/
 ROADMAP.md
 AUDIT.md
+SHIP_AUDIT.md
+cpp/omni.isaacsimrs.bridge/docs/REGISTRY_SUBMISSION.md
 
 # Per-developer just recipes (cross-host SSH, personal paths). The
 # public `justfile` imports this with `import?` if it exists.

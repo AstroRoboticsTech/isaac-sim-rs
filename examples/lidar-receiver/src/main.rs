@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use arrow::array::{Array, Float32Array, ListArray, StructArray};
 use dora_node_api::{ArrowData, DoraNode, Event};
 

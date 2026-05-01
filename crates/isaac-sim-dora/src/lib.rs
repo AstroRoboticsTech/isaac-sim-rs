@@ -6,9 +6,13 @@
 //! (via `isaac-sim-arrow`) and emits it on a dora node output.
 
 pub mod camera;
+pub mod cmd_vel;
 pub mod dispatch;
 pub mod ffi;
+pub mod imu;
 pub mod lidar;
+pub mod odometry;
 pub mod sensor;
+pub mod subscribe;
 
 pub use sensor::DoraPublish;

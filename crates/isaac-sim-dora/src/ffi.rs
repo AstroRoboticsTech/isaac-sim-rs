@@ -1,10 +1,15 @@
 use std::env;
 use std::sync::Arc;
 
+use dora_node_api::dora_core::config::DataId;
 use dora_node_api::DoraNode;
-use isaac_sim_bridge::{CameraDepth, CameraRgb, LidarFlatScan, LidarPointCloud};
+use isaac_sim_bridge::{
+    CameraDepth, CameraInfo, CameraRgb, CmdVelChannel, Imu, LidarFlatScan, LidarPointCloud,
+    Odometry,
+};
 use parking_lot::Mutex;
 
+use crate::cmd_vel::start_cmd_vel_subscriber;
 use crate::sensor::DoraPublish;
 
 #[unsafe(no_mangle)]
@@ -19,13 +24,28 @@ pub extern "C" fn isaac_sim_dora_init() -> i32 {
 }
 
 fn try_init() -> eyre::Result<()> {
-    let (node, _events) = DoraNode::init_from_env()?;
+    let (node, events) = DoraNode::init_from_env()?;
     let node = Arc::new(Mutex::new(node));
 
     register_publisher::<LidarFlatScan>(Arc::clone(&node));
     register_publisher::<LidarPointCloud>(Arc::clone(&node));
     register_publisher::<CameraRgb>(Arc::clone(&node));
     register_publisher::<CameraDepth>(Arc::clone(&node));
+    register_publisher::<CameraInfo>(Arc::clone(&node));
+    register_publisher::<Imu>(Arc::clone(&node));
+    register_publisher::<Odometry>(Arc::clone(&node));
+    register_publisher::<CmdVelChannel>(Arc::clone(&node));
+
+    if let Some((input_id, target_id)) = lookup_cmd_vel_subscriber_config() {
+        log::info!(
+            "[isaac-sim-dora] starting cmd_vel subscriber: input='{input_id}' target='{target_id}'"
+        );
+        start_cmd_vel_subscriber(events, DataId::from(input_id), target_id);
+    } else {
+        log::info!(
+            "[isaac-sim-dora] no cmd_vel subscriber configured (set ISAAC_SIM_RS_DORA_CMD_VEL_INPUT + _TARGET to enable)"
+        );
+    }
 
     Ok(())
 }
@@ -45,4 +65,16 @@ fn register_publisher<S: DoraPublish>(node: Arc<Mutex<DoraNode>>) {
         S::NAME
     );
     S::register(node, source, output);
+}
+
+/// Returns `Some((input_id, target_id))` when both env vars are set.
+/// Either missing → no subscriber spawns and the EventStream is dropped
+/// silently (publishers don't need it).
+fn lookup_cmd_vel_subscriber_config() -> Option<(String, String)> {
+    let input = env::var("ISAAC_SIM_RS_DORA_CMD_VEL_INPUT").ok()?;
+    let target = env::var("ISAAC_SIM_RS_DORA_CMD_VEL_TARGET").ok()?;
+    if input.is_empty() || target.is_empty() {
+        return None;
+    }
+    Some((input, target))
 }

@@ -38,11 +38,29 @@ The core (`isaac-sim-bridge`) has zero adapter dependencies. Adapters (`isaac-si
 
 - `omni.isaacsimrs.bridge` Carb extension loads in Isaac Sim 5.1 with full OmniGraph + USD + GSL toolchain (CMake build, packman-fetched USD).
 - Custom OmniGraph nodes authored in C++ via the standard `.ogn` codegen, registered eagerly so they're visible in OG graphs the moment the extension loads.
-- `OgnPublishLidarToRust` accepts a 2D RTX LiDAR flat scan (matches the output schema of NVIDIA's `IsaacComputeRTXLidarFlatScan`) and forwards depths + intensities + metadata to Rust via `cxx::bridge`.
-- `isaac-sim-bridge` exposes a thread-safe consumer registry: any Rust closure that takes `(&[f32], &[u8], &ScanMeta)` can be registered and gets dispatched on every scan.
-- `isaac-sim-arrow` converts `LidarScan` to an Apache Arrow `RecordBatch` (single row per scan: `List<Float32>` for depths, `List<UInt8>` for intensities, scalars for the metadata).
-- `isaac-sim-dora` is both an `rlib` (downstream Rust crates use the helper API) and a `cdylib` that the bridge dlopens at startup when `ISAAC_SIM_RS_DORA_RUNNER` env var is set — turns Kit into a dora source node with no extra extension code.
-- `examples/lidar-receiver/` ships a runnable end-to-end pipeline (Kit-as-dora-source + Mac/Linux receiver), verified producing 10 Hz Arrow batches under a real dora coordinator.
+- Per-sensor `OgnPublish*ToRust` nodes accept the matching NVIDIA RTX / Replicator / Isaac annotator output and forward payload + metadata to Rust via `cxx::bridge`. The reverse-direction `OgnApplyCmdVelFromRust` polls a Rust producer slot each tick and emits scalar lin/ang velocities into the Isaac differential controller.
+- `isaac-sim-bridge` exposes a thread-safe consumer registry plus a producer registry (cmd_vel): any Rust closure for a sensor can be registered and gets dispatched on every frame; any actuation source can call `register_cmd_vel_producer(target).publish(...)` and the C++ tick reads it.
+- `isaac-sim-arrow` converts every bridged sensor (LiDAR FlatScan + PointCloud, Camera RGB + Depth + Info, IMU, Odometry, cmd_vel) to an Apache Arrow `RecordBatch` with a stable schema per sensor.
+- `isaac-sim-dora` ships publisher adapters for every sensor and a bidirectional cmd_vel adapter, plus convenience subscribe decoders (`subscribe::*`) so downstream dora algorithm nodes can pull native owned structs out of inbound `ArrayRef`s without touching `arrow` directly. As a `cdylib` the bridge `dlopen`s it via `ISAAC_SIM_RS_DORA_RUNNER` so Kit becomes a dora node with no extra extension code; as an `rlib` downstream Rust crates use the helper API directly.
+- `isaac-sim-rerun` wraps the same consumer registry behind a `Viewer` builder: one `with_source(SensorMarker, prim, entity_path)` call per stream, optional cross-host gRPC.
+- `examples/lidar-receiver/` ships a synthesized-input dora pipeline. `examples/nova-carter/` is the full Nova Carter showcase: 2D + 3D LiDAR, RGB + depth + camera-info, IMU, chassis odometry, plus a synthetic cmd_vel publisher driving the robot through a warehouse.
+
+## Adapter coverage
+
+Every bridged sensor currently has Arrow + dora + rerun coverage. Adding a new sensor is two files plus the trait impls, so the matrix is one source of truth:
+
+| Channel             | Bridge | Arrow | Dora pub | Dora sub | Rerun |
+| ------------------- | :----: | :---: | :------: | :------: | :---: |
+| LiDAR FlatScan      | x      | x     | x        | x        | x     |
+| LiDAR PointCloud    | x      | x     | x        | x        | x     |
+| Camera RGB          | x      | x     | x        | x        | x     |
+| Camera Depth        | x      | x     | x        | x        | x     |
+| Camera Info         | x      | x     | x        | x        | x     |
+| IMU                 | x      | x     | x        | x        | x     |
+| Chassis Odometry    | x      | x     | x        | x        | x     |
+| cmd_vel (Twist)     | x      | x     | x        | x        | x     |
+
+**Dora pub** — bridge fans out the Arrow `RecordBatch` on a dora node output. **Dora sub** — convenience decoders (`isaac_sim_dora::subscribe::*`) on the consumer side: a downstream dora algorithm node wires its input to the bridge's output and calls `subscribe::lidar_pointcloud(&data.0)?` (etc.) to get an owned native struct it can run perception / state estimation / control over. **cmd_vel sub** in addition closes the loop into the bridge: an upstream dora node publishes a `Twist`, the bridge decodes it and republishes into the producer slot the C++ apply node polls. **Rerun** opens a `RecordingStream` per channel and pushes payloads as the rerun-native primitive (`Points3D`, `Image`, `Pinhole`, `Scalars`, `Transform3D`).
 
 ## Quick start
 
@@ -79,12 +97,13 @@ The full set of public recipes is `just --list` (workspace tests, clippy, fmt, l
 
 ## Crates
 
-| Crate                                          | Purpose                                                                                     |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| [`carb-sys`](crates/carb-sys/)                 | Raw FFI bindings to the NVIDIA Carbonite SDK (bindgen, env-driven build)                    |
-| [`isaac-sim-bridge`](crates/isaac-sim-bridge/) | C++ ↔ Rust bridge cdylib + consumer registry. The hub everything else plugs into.           |
-| [`isaac-sim-arrow`](crates/isaac-sim-arrow/)   | Apache Arrow conversion utilities for sensor data. Consumer-agnostic.                       |
-| [`isaac-sim-dora`](crates/isaac-sim-dora/)     | dora-rs publisher adapter; rlib for in-process registration + cdylib for the bridge to load |
+| Crate                                          | Purpose                                                                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| [`carb-sys`](crates/carb-sys/)                 | Raw FFI bindings to the NVIDIA Carbonite SDK (bindgen, env-driven build)                                      |
+| [`isaac-sim-bridge`](crates/isaac-sim-bridge/) | C++ ↔ Rust bridge cdylib + consumer registry + cmd_vel producer registry. The hub everything else plugs into. |
+| [`isaac-sim-arrow`](crates/isaac-sim-arrow/)   | Apache Arrow conversion utilities for every bridged sensor + cmd_vel. Consumer-agnostic.                      |
+| [`isaac-sim-dora`](crates/isaac-sim-dora/)     | dora-rs publisher adapters for every sensor + cmd_vel subscriber; rlib + cdylib                               |
+| [`isaac-sim-rerun`](crates/isaac-sim-rerun/)   | rerun viewer adapter: per-sensor `RecordingStream`, gRPC client, builder API                                  |
 
 ## Examples
 
@@ -129,7 +148,7 @@ We may vendor `pxr_rs` for USD support rather than reimplement.
 
 - [NVIDIA Isaac Sim](https://github.com/isaac-sim/IsaacSim) — open-source RTX sensor sources we wire into via sibling OmniGraph nodes
 - [dora-rs](https://github.com/dora-rs/dora) — low-latency dataflow runtime; first-class consumer
-- [rerun](https://github.com/rerun-io/rerun) — interactive 3D viewer; planned consumer adapter
+- [rerun](https://github.com/rerun-io/rerun) — interactive 3D viewer; first-class consumer adapter (`crates/isaac-sim-rerun`)
 - [Apache Arrow](https://arrow.apache.org) — universal columnar interchange format used by all our consumer adapters
 
 ## Contributing

@@ -49,7 +49,7 @@ pub extern "C" fn isaac_sim_rerun_init() -> i32 {
     match try_init() {
         Ok(()) => 0,
         Err(e) => {
-            log::error!("[example-rerun-viewer] init failed: {e}");
+            log::error!("[example-nova-carter] init failed: {e}");
             -1
         }
     }
@@ -73,7 +73,7 @@ fn spawn_cmd_vel_demo() {
     let period = Duration::from_secs_f32(1.0 / CMD_VEL_PUBLISH_HZ);
     let started = Instant::now();
     log::info!(
-        "[example-rerun-viewer] cmd_vel demo: target='{CMD_VEL_TARGET}' \
+        "[example-nova-carter] cmd_vel demo: target='{CMD_VEL_TARGET}' \
          linear_x={CMD_VEL_LINEAR_X} angular_z={CMD_VEL_ANGULAR_Z} \
          @ {CMD_VEL_PUBLISH_HZ:.0} Hz"
     );

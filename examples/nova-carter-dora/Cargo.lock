@@ -4694,7 +4694,7 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "isaac-sim-arrow"
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "arrow 54.3.1",
  "log",
@@ -4702,7 +4702,7 @@ dependencies = [
 
 [[package]]
 name = "isaac-sim-bridge"
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "arc-swap",
  "cxx",
@@ -4714,7 +4714,7 @@ dependencies = [
 
 [[package]]
 name = "isaac-sim-dora"
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "arc-swap",
  "arrow 54.3.1",

@@ -1,6 +1,9 @@
 nodes:
   - id: kit
     path: ./launch-kit.sh
+    env:
+      ISAAC_SIM: ~/isaac-sim
+      ISAAC_SIM_RS: ~/dev/isaac-sim-rs
     outputs:
       - lidar_flatscan
       - lidar_pointcloud

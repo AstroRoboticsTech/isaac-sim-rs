@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Nova Carter dora receiver.
 //!
 //! Subscribes to every sensor channel the Kit-side dora source emits,

@@ -8,7 +8,7 @@ set -euo pipefail
 # runner cdylib. It opens a DoraNode + EventStream from the env vars
 # dora supplies and registers one publisher per sensor + a cmd_vel
 # subscriber.
-export ISAAC_SIM_RS_DORA_RUNNER="${ISAAC_SIM_RS}/cpp/omni.isaacsimrs.bridge/bin/libisaac_sim_dora.so"
+export ISAAC_SIM_RS_DORA_RUNNER="${ISAAC_SIM_RS}/cpp/omni.isaacsimrs.bridge/bin/linux-x86_64/libisaac_sim_dora.so"
 
 # Per-sensor SOURCE filters tie the publisher to a specific prim path
 # in the Carter scene; OUTPUT names match dataflow.yml.

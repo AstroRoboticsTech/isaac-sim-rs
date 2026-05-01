@@ -1,26 +1,47 @@
 # SPDX-License-Identifier: MPL-2.0
 name: release
 
+# Tag push only creates the GitHub Release page with notes extracted
+# from CHANGELOG.md. Cargo crates publish + kit extension tarball upload
+# run manually from the maintainer's box.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
 
 jobs:
-  publish:
+  release-notes:
+    name: Publish GitHub Release notes
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Verify tag matches workspace version
+      - name: Extract CHANGELOG section for tag
+        id: notes
         run: |
-          TAG="${GITHUB_REF##*/v}"
-          WS=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
-          [ "$TAG" = "$WS" ] || (echo "tag $TAG != workspace $WS"; exit 1)
-      - run: cargo publish -p isaac-sim-arrow --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
-      - run: sleep 30
-      - run: cargo publish -p isaac-sim-bridge --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
-      - run: sleep 30
-      - run: cargo publish -p isaac-sim-dora --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
-      - run: cargo publish -p isaac-sim-rerun --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
-      - run: sleep 30
-      - run: cargo publish -p isaac-sim-rs --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
+          TAG="${GITHUB_REF##*/}"
+          VERSION="${TAG#v}"
+          NOTES=/tmp/release-notes.md
+          awk -v ver="$VERSION" '
+            BEGIN { p = 0 }
+            $0 ~ "^## \\[" ver "\\]" { p = 1; next }
+            /^## \[/ { p = 0 }
+            p { print }
+          ' CHANGELOG.md > "$NOTES"
+          if [ ! -s "$NOTES" ]; then
+            echo "no CHANGELOG section for [$VERSION]"; exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+          echo "--- extracted notes ---"; cat "$NOTES"
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.notes.outputs.tag }}"
+          NOTES="${{ steps.notes.outputs.notes }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$NOTES"
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file "$NOTES"
+          fi

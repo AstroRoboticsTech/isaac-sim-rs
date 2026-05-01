@@ -1,4 +1,10 @@
 function(packman_pull_usd OUT_VAR)
+    if(NOT EXT_PLATFORM STREQUAL "linux-x86_64")
+        message(FATAL_ERROR
+            "USD packman package is x86_64-only (got EXT_PLATFORM=${EXT_PLATFORM}). "
+            "Aarch64 USD support requires a different package name + version.")
+    endif()
+
     set(PACKMAN "${ISAAC_SIM}/kit/dev/tools/packman/packman")
     set(DEPS_DIR "${CMAKE_BINARY_DIR}/deps")
     set(USD_LINK "${DEPS_DIR}/usd-release")
@@ -23,7 +29,7 @@ function(packman_pull_usd OUT_VAR)
     if(NOT EXISTS "${USD_COMPLETE}")
         message(STATUS "packman: fetching USD ${USD_PKG_VERSION} (~3.8 GB extracted, cached after first run)")
         execute_process(
-            COMMAND "${PACKMAN}" pull "${USD_DEPS_XML}" --platform linux-x86_64
+            COMMAND "${PACKMAN}" pull "${USD_DEPS_XML}" --platform "${EXT_PLATFORM}"
             RESULT_VARIABLE result
         )
         if(NOT result EQUAL 0)

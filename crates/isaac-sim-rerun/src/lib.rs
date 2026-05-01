@@ -1,4 +1,5 @@
 pub mod camera;
+pub mod cmd_vel;
 pub mod dispatch;
 pub mod imu;
 pub mod lidar;

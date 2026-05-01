@@ -7,7 +7,7 @@ members = [
     "crates/isaac-sim-dora",
     "crates/isaac-sim-rerun",
     "examples/lidar-receiver",
-    "examples/rerun-viewer",
+    "examples/nova-carter",
 ]
 
 [workspace.package]

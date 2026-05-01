@@ -1,11 +1,11 @@
 [package]
-name = "example-rerun-viewer"
+name = "example-nova-carter"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Example: a tiny cdylib that the bridge dlopens via ISAAC_SIM_RS_RERUN_RUNNER. Uses the isaac-sim-rerun Viewer builder to subscribe a LiDAR consumer and demonstrate the blueprint hook. Shows the customization path users take when the env-driven default isn't enough."
+description = "Example: Nova Carter end-to-end demo. Bridge-loaded cdylib that opens a rerun viewer, subscribes every sensor publisher (2D + 3D LiDAR, RGB + depth camera + camera info, IMU, chassis odometry), and drives Carter with a synthetic cmd_vel publisher so the robot visibly arcs through the warehouse."
 publish = false
 
 [lib]

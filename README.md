@@ -88,11 +88,12 @@ The full set of public recipes is `just --list` (workspace tests, clippy, fmt, l
 
 ## Examples
 
-| Example                                      | Demonstrates                                                      |
-| -------------------------------------------- | ----------------------------------------------------------------- |
-| [`lidar-receiver`](examples/lidar-receiver/) | Kit-as-dora-source + receiver dora node; full end-to-end pipeline |
+| Example                                      | Demonstrates                                                                                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`lidar-receiver`](examples/lidar-receiver/) | Kit-as-dora-source + receiver dora node; full end-to-end pipeline                                                                                             |
+| [`nova-carter`](examples/nova-carter/)       | Nova Carter in a warehouse: 2D + 3D LiDAR, RGB + depth + camera-info, IMU, chassis odometry, cmd_vel apply chain; streams to a rerun viewer over gRPC        |
 
-More planned (cross-host rerun viewer, camera, IMU). Each will live in its own self-contained `examples/<name>/` directory.
+Each example lives in its own self-contained `examples/<name>/` directory.
 
 ## Compatibility
 

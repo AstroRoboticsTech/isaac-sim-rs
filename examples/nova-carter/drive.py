@@ -57,6 +57,19 @@ IMU_PRIM = f"{CARTER_PRIM}/chassis_link/imu"
 # top-level Carter reference prim is not one. The chassis_link rigid
 # body is the canonical chassis frame for Nova Carter.
 CHASSIS_PRIM = f"{CARTER_PRIM}/chassis_link"
+# Producer registry key for cmd_vel. Whoever publishes Twist on the
+# Rust side must use the same string when calling
+# `register_cmd_vel_producer`. We use the Carter root prim path so the
+# actuation key is conceptually "this articulation".
+CMD_VEL_TARGET = CARTER_PRIM
+# Nova Carter rear-wheel geometry. Public Isaac Sim docs and the Nova
+# Carter URDF put the powered wheels at ~0.14 m radius separated by
+# ~0.413 m. These numbers feed the differential controller's twist→
+# wheel-velocity conversion; if Carter drives noticeably under/over the
+# requested speed, tweak these (or read them off the USD prim).
+NOVA_CARTER_WHEEL_RADIUS_M = 0.14
+NOVA_CARTER_WHEEL_DISTANCE_M = 0.413
+NOVA_CARTER_WHEEL_JOINTS = ["joint_wheel_left", "joint_wheel_right"]
 
 FLATSCAN_PORTS = (
     "exec",
@@ -296,8 +309,68 @@ og.Controller.set(
     og.Controller.attribute(f"{publish_odom_path}.inputs:sourceId"), CHASSIS_PRIM
 )
 
+# cmd_vel apply chain. ApplyCmdVelFromRust polls the Rust producer slot
+# each tick and emits scalar linearVelocity / angularVelocity. A
+# DifferentialController turns those into per-wheel velocities, which an
+# ArticulationController writes to Carter's drive joints. Same exec
+# cadence as the rest of the publisher graph (FlatScan's 10 Hz).
+cmd_vel_graph_path = flat_scan.get_graph().get_path_to_graph()
+apply_cmd_vel_path = f"{cmd_vel_graph_path}/ApplyCmdVelFromRust"
+diff_controller_path = f"{cmd_vel_graph_path}/CarterDifferentialController"
+art_controller_path = f"{cmd_vel_graph_path}/CarterArticulationController"
+og.Controller.create_node(
+    apply_cmd_vel_path, "omni.isaacsimrs.bridge.ApplyCmdVelFromRust"
+)
+og.Controller.create_node(
+    diff_controller_path, "isaacsim.robot.wheeled_robots.DifferentialController"
+)
+og.Controller.create_node(
+    art_controller_path, "isaacsim.core.nodes.IsaacArticulationController"
+)
+og.Controller.set(
+    og.Controller.attribute(f"{apply_cmd_vel_path}.inputs:targetId"),
+    CMD_VEL_TARGET,
+)
+og.Controller.set(
+    og.Controller.attribute(f"{diff_controller_path}.inputs:wheelRadius"),
+    NOVA_CARTER_WHEEL_RADIUS_M,
+)
+og.Controller.set(
+    og.Controller.attribute(f"{diff_controller_path}.inputs:wheelDistance"),
+    NOVA_CARTER_WHEEL_DISTANCE_M,
+)
+og.Controller.set(
+    og.Controller.attribute(f"{art_controller_path}.inputs:jointNames"),
+    NOVA_CARTER_WHEEL_JOINTS,
+)
+og.Controller.set(
+    og.Controller.attribute(f"{art_controller_path}.inputs:targetPrim"),
+    [CHASSIS_PRIM],
+)
+og.Controller.connect(
+    flat_scan.get_attribute("outputs:exec"),
+    f"{apply_cmd_vel_path}.inputs:execIn",
+)
+for src, dst_node, dst_port in (
+    ("execOut", diff_controller_path, "execIn"),
+    ("linearVelocity", diff_controller_path, "linearVelocity"),
+    ("angularVelocity", diff_controller_path, "angularVelocity"),
+):
+    og.Controller.connect(
+        f"{apply_cmd_vel_path}.outputs:{src}",
+        f"{dst_node}.inputs:{dst_port}",
+    )
+og.Controller.connect(
+    f"{apply_cmd_vel_path}.outputs:execOut",
+    f"{art_controller_path}.inputs:execIn",
+)
+og.Controller.connect(
+    f"{diff_controller_path}.outputs:velocityCommand",
+    f"{art_controller_path}.inputs:velocityCommand",
+)
+
 omni.timeline.get_timeline_interface().play()
 print(
     "[og_drive] 2D FlatScan + 3D PointCloud + RGB + Depth + CameraInfo + IMU + "
-    "Odometry wired; timeline playing"
+    "Odometry + cmd_vel apply wired; timeline playing"
 )

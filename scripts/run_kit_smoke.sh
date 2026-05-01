@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tier-(c) Kit-launched smoke test for nightly cron.
 #
-# Boots Kit headlessly via the rerun-viewer example launcher, watches
+# Boots Kit headlessly via the nova-carter example launcher, watches
 # for rerun batcher backpressure warnings (proxy for "consumers fired
 # at least once"), and exits 0 on success / non-zero on timeout or
 # crash. Wire as a nightly cron writing JUnit-XML or a one-line status
@@ -26,7 +26,7 @@ sleep 1
 rm -f "$LOG_FILE"
 
 echo "[kit-smoke] launching Kit (timeout=${TIMEOUT}s log=${LOG_FILE})"
-setsid bash -c "exec ${ISAAC_SIM_RS}/examples/rerun-viewer/launch-kit-rerun.sh" \
+setsid bash -c "exec ${ISAAC_SIM_RS}/examples/nova-carter/launch.sh" \
     >"$LOG_FILE" 2>&1 < /dev/null &
 
 DEADLINE=$(( $(date +%s) + TIMEOUT ))

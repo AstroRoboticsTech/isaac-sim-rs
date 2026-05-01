@@ -3512,7 +3512,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "example-rerun-viewer"
+name = "example-nova-carter"
 version = "5.1.0-alpha.0"
 dependencies = [
  "env_logger",

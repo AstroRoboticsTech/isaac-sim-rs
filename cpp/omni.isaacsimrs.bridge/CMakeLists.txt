@@ -50,7 +50,7 @@ add_custom_target(cargo_cdylibs ALL
     BYPRODUCTS
         "${CARGO_OUTPUT_DIR}/libisaac_sim_bridge.so"
         "${CARGO_OUTPUT_DIR}/libisaac_sim_dora.so"
-        "${CARGO_OUTPUT_DIR}/libexample_rerun_viewer.so"
+        "${CARGO_OUTPUT_DIR}/libexample_nova_carter.so"
     COMMENT "[isaacsimrs] cargo build --workspace --lib"
     USES_TERMINAL
 )
@@ -139,7 +139,7 @@ target_link_libraries(omni_isaacsimrs_bridge PRIVATE
 # the plugin always relinks when any cdylib changes (because the
 # cargo_cdylibs dependency forces cargo first, and cmake recognises
 # the new mtime via BYPRODUCTS).
-foreach(crate isaac_sim_bridge isaac_sim_dora example_rerun_viewer)
+foreach(crate isaac_sim_bridge isaac_sim_dora example_nova_carter)
     add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CARGO_OUTPUT_DIR}/lib${crate}.so"

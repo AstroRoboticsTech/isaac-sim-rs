@@ -1,0 +1,20 @@
+{
+    "ApplyCmdVelFromRust": {
+        "version": 1,
+        "language": "C++",
+        "description": "Polls the latest cmd_vel (Twist) value published into the Rust producer registry for `targetId` and emits its linear/angular components on the node outputs each tick. Pair downstream with a controller (e.g. IsaacDifferentialController for differential-drive robots → IsaacArticulationController) to actually apply the command to an articulation. The reverse direction of the Publish*ToRust nodes: data flows Rust→C++ here, so any adapter (dora subscriber, joystick, RL policy) that holds a `ProducerSlot<CmdVel>` for `targetId` drives the downstream controller. On a poll miss (no producer registered, or no value published yet) the node emits zero linear and angular velocity so the robot stops cleanly instead of holding the last command.",
+        "metadata": {
+            "categories": ["Actuator"],
+            "keywords": ["cmd_vel", "twist", "articulation", "rust", "ffi"]
+        },
+        "inputs": {
+            "execIn": {"type": "execution", "description": "Tick the apply node — wire to whatever cadence you want the producer polled at (typically the per-frame or per-physics-step exec)"},
+            "targetId": {"type": "string", "default": "", "description": "Producer registry key, typically the articulation prim path. Adapters call register_cmd_vel_producer(target_id) with the same string."}
+        },
+        "outputs": {
+            "execOut": {"type": "execution", "description": "Fires after the producer slot has been polled, regardless of hit or miss, so downstream controllers always tick"},
+            "linearVelocity": {"type": "double", "default": 0.0, "description": "Latest linear x velocity (m/s) from the producer slot. Wire to IsaacDifferentialController.inputs:linearVelocity (ignores y/z; differential drive is 1-DoF on body x). Zero on poll miss."},
+            "angularVelocity": {"type": "double", "default": 0.0, "description": "Latest angular z velocity (rad/s) from the producer slot. Wire to IsaacDifferentialController.inputs:angularVelocity (yaw rate). Zero on poll miss."}
+        }
+    }
+}

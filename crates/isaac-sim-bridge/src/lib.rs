@@ -10,7 +10,10 @@ mod producer;
 mod sensor;
 mod source;
 
-pub use articulation::cmd_vel::{cmd_vel_producer_count, register_cmd_vel_producer, CmdVelChannel};
+pub use articulation::cmd_vel::{
+    cmd_vel_consumer_count, cmd_vel_producer_count, peek_cmd_vel, register_cmd_vel_consumer,
+    register_cmd_vel_producer, CmdVelChannel,
+};
 pub use camera::depth::{
     camera_depth_consumer_count, dispatch_camera_depth, register_camera_depth_consumer, CameraDepth,
 };

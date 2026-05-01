@@ -1,6 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
-use arrow::array::{ArrayRef, Float32Array, Int32Array, ListArray, UInt8Array};
+use arrow::array::{Array, ArrayRef, Float32Array, Int32Array, ListArray, StructArray, UInt8Array};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
@@ -8,6 +8,24 @@ use arrow::record_batch::RecordBatch;
 pub struct LidarFlatScan<'a> {
     pub depths: &'a [f32],
     pub intensities: &'a [u8],
+    pub horizontal_fov: f32,
+    pub horizontal_resolution: f32,
+    pub azimuth_min: f32,
+    pub azimuth_max: f32,
+    pub depth_min: f32,
+    pub depth_max: f32,
+    pub num_rows: i32,
+    pub num_cols: i32,
+    pub rotation_rate: f32,
+}
+
+/// Owned variant returned by [`from_struct_array`]. Holds heap-owned
+/// payload so a downstream dora node can keep the decoded value across
+/// the next event without a borrow on the inbound `ArrayRef`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LidarFlatScanOwned {
+    pub depths: Vec<f32>,
+    pub intensities: Vec<u8>,
     pub horizontal_fov: f32,
     pub horizontal_resolution: f32,
     pub azimuth_min: f32,
@@ -84,6 +102,103 @@ pub fn to_record_batch(scan: &LidarFlatScan) -> Result<RecordBatch, arrow::error
     RecordBatch::try_new(schema(), columns)
 }
 
+pub fn from_struct_array(
+    array: &StructArray,
+) -> Result<LidarFlatScanOwned, arrow::error::ArrowError> {
+    if array.is_empty() {
+        return Err(arrow::error::ArrowError::InvalidArgumentError(
+            "lidar_flatscan struct array is empty".into(),
+        ));
+    }
+    Ok(LidarFlatScanOwned {
+        depths: list_f32(array, 0, "depths")?,
+        intensities: list_u8(array, 1, "intensities")?,
+        horizontal_fov: scalar_f32(array, 2, "horizontal_fov")?,
+        horizontal_resolution: scalar_f32(array, 3, "horizontal_resolution")?,
+        azimuth_min: scalar_f32(array, 4, "azimuth_min")?,
+        azimuth_max: scalar_f32(array, 5, "azimuth_max")?,
+        depth_min: scalar_f32(array, 6, "depth_min")?,
+        depth_max: scalar_f32(array, 7, "depth_max")?,
+        num_rows: scalar_i32(array, 8, "num_rows")?,
+        num_cols: scalar_i32(array, 9, "num_cols")?,
+        rotation_rate: scalar_f32(array, 10, "rotation_rate")?,
+    })
+}
+
+fn list_f32(
+    array: &StructArray,
+    idx: usize,
+    name: &str,
+) -> Result<Vec<f32>, arrow::error::ArrowError> {
+    let list = array
+        .column(idx)
+        .as_any()
+        .downcast_ref::<ListArray>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError(format!("flatscan '{name}' not ListArray"))
+        })?;
+    let values = list
+        .values()
+        .as_any()
+        .downcast_ref::<Float32Array>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError(format!("flatscan '{name}' inner not Float32"))
+        })?;
+    Ok(values.values().to_vec())
+}
+
+fn list_u8(
+    array: &StructArray,
+    idx: usize,
+    name: &str,
+) -> Result<Vec<u8>, arrow::error::ArrowError> {
+    let list = array
+        .column(idx)
+        .as_any()
+        .downcast_ref::<ListArray>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError(format!("flatscan '{name}' not ListArray"))
+        })?;
+    let values = list
+        .values()
+        .as_any()
+        .downcast_ref::<UInt8Array>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError(format!("flatscan '{name}' inner not UInt8"))
+        })?;
+    Ok(values.values().to_vec())
+}
+
+fn scalar_f32(
+    array: &StructArray,
+    idx: usize,
+    name: &str,
+) -> Result<f32, arrow::error::ArrowError> {
+    array
+        .column(idx)
+        .as_any()
+        .downcast_ref::<Float32Array>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError(format!("flatscan '{name}' not Float32"))
+        })
+        .map(|a| a.value(0))
+}
+
+fn scalar_i32(
+    array: &StructArray,
+    idx: usize,
+    name: &str,
+) -> Result<i32, arrow::error::ArrowError> {
+    array
+        .column(idx)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError(format!("flatscan '{name}' not Int32"))
+        })
+        .map(|a| a.value(0))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,5 +267,32 @@ mod tests {
             .downcast_ref::<Int32Array>()
             .expect("num_cols is Int32Array");
         assert_eq!(cols_col.value(0), 8);
+    }
+
+    #[test]
+    fn from_struct_array_round_trips() {
+        let depths = [0.5_f32, 1.2, 2.7, 3.0];
+        let intensities = [10_u8, 50, 200, 100];
+        let scan = LidarFlatScan {
+            depths: &depths,
+            intensities: &intensities,
+            horizontal_fov: 270.0,
+            horizontal_resolution: 0.25,
+            azimuth_min: -135.0,
+            azimuth_max: 135.0,
+            depth_min: 0.1,
+            depth_max: 30.0,
+            num_rows: 1,
+            num_cols: 4,
+            rotation_rate: 10.0,
+        };
+        let batch = to_record_batch(&scan).expect("to");
+        let array = StructArray::from(batch);
+        let owned = from_struct_array(&array).expect("from");
+        assert_eq!(owned.depths, depths);
+        assert_eq!(owned.intensities, intensities);
+        assert_eq!(owned.horizontal_fov, 270.0);
+        assert_eq!(owned.num_cols, 4);
+        assert_eq!(owned.rotation_rate, 10.0);
     }
 }

@@ -4,4 +4,7 @@
 //! can take the resulting `RecordBatch`. One sub-module per sensor domain.
 
 pub mod camera;
+pub mod cmd_vel;
+pub mod imu;
 pub mod lidar;
+pub mod odometry;

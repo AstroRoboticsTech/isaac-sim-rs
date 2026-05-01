@@ -39,6 +39,25 @@ pub fn cmd_vel_producer_count() -> usize {
     registry().count()
 }
 
+/// Register a consumer that observes every Twist published into any
+/// cmd_vel producer slot. The closure receives `(target_id, &CmdVel)`
+/// — filter on `target_id` if you only care about one articulation.
+///
+/// This is the symmetric "publisher" direction: anything that wants
+/// to watch the actuation stream (dora downstream output, telemetry
+/// logger, second simulator) hooks in here without coupling to the
+/// upstream source.
+pub fn register_cmd_vel_consumer<F>(cb: F)
+where
+    F: Fn(&str, &CmdVel) + Send + Sync + 'static,
+{
+    registry().add_observer(cb);
+}
+
+pub fn cmd_vel_consumer_count() -> usize {
+    registry().observer_count()
+}
+
 /// C++-facing poll. Looks up the slot for `target_id`, copies the
 /// latest published value into `out`, and returns true on hit.
 /// Returns false if no producer is registered for that target or if
@@ -51,6 +70,14 @@ pub fn poll_cmd_vel(target_id: &str, out: &mut CmdVel) -> bool {
         }
     }
     false
+}
+
+/// Rust-friendly variant of [`poll_cmd_vel`] for tests + adapter
+/// inspection. Returns `Some(CmdVel)` when a producer is registered
+/// and has published at least once; `None` otherwise.
+pub fn peek_cmd_vel(target_id: &str) -> Option<CmdVel> {
+    let mut out = CmdVel::default();
+    poll_cmd_vel(target_id, &mut out).then_some(out)
 }
 
 #[cfg(test)]

@@ -11,7 +11,7 @@ use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::DoraPublish;
 
 struct Frame {
-    pixels: Vec<u8>,
+    pixels: Arc<[u8]>,
     meta: CameraRgbMeta,
 }
 
@@ -43,7 +43,7 @@ pub fn register_dora_camera_rgb_publisher(
             return;
         }
         slot.publish(Frame {
-            pixels: pixels.to_vec(),
+            pixels: Arc::from(pixels),
             meta: *meta,
         });
     });

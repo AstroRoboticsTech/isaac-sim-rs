@@ -42,6 +42,24 @@ impl<T: Send + Sync + 'static> LatestSlot<T> {
     }
 }
 
+/// Spawn a drain thread that forwards the latest slot value to `sink`.
+///
+/// Ordering: `publish` atomically stores the new value then sends a wake.
+/// The drain unblocks on that wake, drains any additional wakes via
+/// `try_recv` (coalescing burst publishes into one read), then calls
+/// `slot.take()` which atomically swaps the slot to `None`. If a new
+/// `publish` races in during that window, the bounded wake channel already
+/// has capacity and the next `recv()` fires immediately, guaranteeing no
+/// value is silently dropped — worst case is one extra round-trip of
+/// latency. The `arc_swap::ArcSwapOption::swap(None)` inside `take` is
+/// the load-bearing atomic.
+///
+/// The thread exits when all `Arc` refs to the `LatestSlot` are dropped:
+/// dropping the slot closes the `SyncSender` wake half, causing
+/// `wake.recv()` inside the drain to return `Err`. Production callers
+/// (cdylib publishers) intentionally leak the returned `JoinHandle`
+/// because the drain is process-lifetime; the shutdown path is exercised
+/// in tests.
 pub fn spawn_drain<T, F>(
     name: &str,
     slot: Arc<LatestSlot<T>>,
@@ -52,14 +70,18 @@ where
     T: Send + Sync + 'static,
     F: FnMut(Arc<T>) + Send + 'static,
 {
+    let weak = Arc::downgrade(&slot);
+    drop(slot);
     let name = name.to_string();
     thread::Builder::new()
         .name(name)
         .spawn(move || {
             while wake.recv().is_ok() {
                 while wake.try_recv().is_ok() {}
-                if let Some(v) = slot.take() {
-                    sink(v);
+                if let Some(slot) = weak.upgrade() {
+                    if let Some(v) = slot.take() {
+                        sink(v);
+                    }
                 }
             }
         })
@@ -89,5 +111,26 @@ mod tests {
             thread::sleep(Duration::from_millis(10));
         }
         assert!(count.load(Ordering::SeqCst) >= 1);
+    }
+
+    #[test]
+    fn drain_thread_exits_when_slot_is_dropped() {
+        let (slot, wake) = LatestSlot::<i32>::new();
+        let handle = spawn_drain("test-shutdown", Arc::clone(&slot), wake, move |_| {});
+        slot.publish(1);
+        thread::sleep(Duration::from_millis(20));
+        drop(slot);
+        let deadline = std::time::Instant::now() + Duration::from_millis(500);
+        loop {
+            if handle.is_finished() {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "drain thread did not exit within 500 ms after slot drop"
+            );
+            thread::sleep(Duration::from_millis(10));
+        }
+        handle.join().expect("drain exits cleanly");
     }
 }

@@ -13,7 +13,7 @@ use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::DoraPublish;
 
 struct Frame {
-    depths: Vec<f32>,
+    depths: Arc<[f32]>,
     meta: CameraDepthMeta,
 }
 
@@ -47,7 +47,7 @@ pub fn register_dora_camera_depth_publisher(
             return;
         }
         slot.publish(Frame {
-            depths: depths.to_vec(),
+            depths: Arc::from(depths),
             meta: *meta,
         });
     });

@@ -13,7 +13,7 @@ use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::DoraPublish;
 
 struct Frame {
-    points: Vec<f32>,
+    points: Arc<[f32]>,
     meta: LidarPointCloudMeta,
 }
 
@@ -47,7 +47,7 @@ pub fn register_dora_lidar_pointcloud_publisher(
             return;
         }
         slot.publish(Frame {
-            points: points.to_vec(),
+            points: Arc::from(points),
             meta: *meta,
         });
     });

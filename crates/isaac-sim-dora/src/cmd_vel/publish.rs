@@ -20,10 +20,6 @@ use parking_lot::Mutex;
 use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::DoraPublish;
 
-struct Frame {
-    twist: BridgeCmdVel,
-}
-
 impl DoraPublish for CmdVelChannel {
     fn register(node: Arc<Mutex<DoraNode>>, source: String, output_id: String) {
         register_dora_cmd_vel_publisher(node, source, output_id);
@@ -38,11 +34,11 @@ pub fn register_dora_cmd_vel_publisher(
     let output: DataId = output_id.into().into();
     let filter = SourceFilter::exact(source.clone());
 
-    let (slot, wake) = LatestSlot::<Frame>::new();
+    let (slot, wake) = LatestSlot::<BridgeCmdVel>::new();
     let source_for_drain = source.clone();
     let drain_name = format!("dora-drain-cmd_vel:{source}");
-    let _ = spawn_drain(&drain_name, slot.clone(), wake, move |frame| {
-        if let Err(e) = publish(&node, &output, &frame.twist) {
+    let _ = spawn_drain(&drain_name, slot.clone(), wake, move |twist| {
+        if let Err(e) = publish(&node, &output, &twist) {
             log::warn!("[isaac-sim-dora] cmd_vel publish failed for '{source_for_drain}': {e}");
         }
     });
@@ -51,7 +47,7 @@ pub fn register_dora_cmd_vel_publisher(
         if !filter.matches(target) {
             return;
         }
-        slot.publish(Frame { twist: *twist });
+        slot.publish(*twist);
     });
 }
 

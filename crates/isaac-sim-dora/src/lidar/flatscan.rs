@@ -13,8 +13,8 @@ use crate::dispatch::{spawn_drain, LatestSlot};
 use crate::sensor::DoraPublish;
 
 struct Frame {
-    depths: Vec<f32>,
-    intensities: Vec<u8>,
+    depths: Arc<[f32]>,
+    intensities: Arc<[u8]>,
     meta: LidarFlatScanMeta,
 }
 
@@ -54,8 +54,8 @@ pub fn register_dora_lidar_flatscan_publisher(
             return;
         }
         slot.publish(Frame {
-            depths: scan.to_vec(),
-            intensities: intensities.to_vec(),
+            depths: Arc::from(scan),
+            intensities: Arc::from(intensities),
             meta: *meta,
         });
     });

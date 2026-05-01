@@ -107,10 +107,11 @@ The full set of public recipes is `just --list` (workspace tests, clippy, fmt, l
 
 ## Examples
 
-| Example                                      | Demonstrates                                                                                                                                                  |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`lidar-receiver`](examples/lidar-receiver/) | Kit-as-dora-source + receiver dora node; full end-to-end pipeline                                                                                             |
-| [`nova-carter`](examples/nova-carter/)       | Nova Carter in a warehouse: 2D + 3D LiDAR, RGB + depth + camera-info, IMU, chassis odometry, cmd_vel apply chain; streams to a rerun viewer over gRPC        |
+| Example                                              | Demonstrates                                                                                                                                                  |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`lidar-receiver`](examples/lidar-receiver/)         | Kit-as-dora-source + receiver dora node; full end-to-end pipeline                                                                                             |
+| [`nova-carter`](examples/nova-carter/)               | Nova Carter in a warehouse: 2D + 3D LiDAR, RGB + depth + camera-info, IMU, chassis odometry, cmd_vel apply chain; streams to a rerun viewer over gRPC        |
+| [`nova-carter-dora`](examples/nova-carter-dora/)     | Full dora E2E: Kit publishes 8 channels, receiver decodes all via Arrow shims, emits cmd_vel back; optional rerun gRPC sink. Build standalone: `cargo build --manifest-path examples/nova-carter-dora/Cargo.toml` |
 
 Each example lives in its own self-contained `examples/<name>/` directory.
 

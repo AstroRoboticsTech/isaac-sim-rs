@@ -27,17 +27,15 @@ export ISAAC_SIM_RS_DORA_IMU_OUTPUT="${ISAAC_SIM_RS_DORA_IMU_OUTPUT:-imu}"
 export ISAAC_SIM_RS_DORA_ODOMETRY_SOURCE="${ISAAC_SIM_RS_DORA_ODOMETRY_SOURCE:-/Root/World/Carter/chassis_link}"
 export ISAAC_SIM_RS_DORA_ODOMETRY_OUTPUT="${ISAAC_SIM_RS_DORA_ODOMETRY_OUTPUT:-odometry}"
 
-# cmd_vel publisher direction (bridge → dora output). Filters by
-# target_id (the articulation prim path) and emits each Twist that
-# any Rust source publishes into the producer slot. Different output
-# name from the subscriber input to avoid a self-loop in the dataflow.
+# Publisher direction (bridge → dora): SOURCE is the prim-path filter;
+# OUTPUT is the dora node output id. The output default is "cmd_vel_observed"
+# (not "cmd_vel") so it never collides with the subscriber INPUT below.
 export ISAAC_SIM_RS_DORA_CMD_VEL_SOURCE="${ISAAC_SIM_RS_DORA_CMD_VEL_SOURCE:-/Root/World/Carter}"
 export ISAAC_SIM_RS_DORA_CMD_VEL_OUTPUT="${ISAAC_SIM_RS_DORA_CMD_VEL_OUTPUT:-cmd_vel_observed}"
 
-# cmd_vel subscriber direction (dora input → bridge slot). Decodes
-# `Twist` Arrow batches arriving on `cmd_vel` and republishes them
-# into the producer slot keyed by `_TARGET`; the C++
-# ApplyCmdVelFromRust node polls that slot every OG tick.
+# Subscriber direction (dora → bridge): INPUT is the dora input id the
+# node listens on; TARGET is the producer-slot key (articulation prim path)
+# that the C++ ApplyCmdVelFromRust node polls every OG tick.
 export ISAAC_SIM_RS_DORA_CMD_VEL_INPUT="${ISAAC_SIM_RS_DORA_CMD_VEL_INPUT:-cmd_vel}"
 export ISAAC_SIM_RS_DORA_CMD_VEL_TARGET="${ISAAC_SIM_RS_DORA_CMD_VEL_TARGET:-/Root/World/Carter}"
 

@@ -14,7 +14,7 @@ nodes:
       cmd_vel: receiver/cmd_vel
 
   - id: receiver
-    path: ../../target/debug/example-nova-carter-dora
+    path: ./target/debug/example-nova-carter-dora
     env:
       RERUN_GRPC_ADDR: 127.0.0.1:9876
     inputs:

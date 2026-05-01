@@ -15,10 +15,13 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
-use arrow::array::StructArray;
+use arrow::array::{ArrayRef, StructArray};
 use dora_node_api::dora_core::config::DataId;
 use dora_node_api::{DoraNode, Event, MetadataParameters};
+use isaac_sim_arrow::camera::depth::from_struct_array_borrowed as decode_depth_borrowed;
+use isaac_sim_arrow::camera::rgb::from_struct_array_borrowed as decode_rgb_borrowed;
 use isaac_sim_arrow::cmd_vel::{to_record_batch, CmdVel as ArrowCmdVel};
+use isaac_sim_arrow::lidar::pointcloud::from_struct_array_borrowed as decode_pointcloud_borrowed;
 use isaac_sim_dora::subscribe;
 use rerun::{
     datatypes::ChannelDatatype, DepthImage, Image, Points3D, RecordingStream,
@@ -31,6 +34,36 @@ const CMD_VEL_ANGULAR_Z: f32 = 0.0;
 const RERUN_APP_ID: &str = "isaac-sim-rs/nova-carter-dora";
 const RERUN_GRPC_ADDR_ENV: &str = "RERUN_GRPC_ADDR";
 
+struct DecimationConfig {
+    pointcloud: u64,
+    rgb: u64,
+    depth: u64,
+}
+
+impl DecimationConfig {
+    fn from_env() -> Self {
+        Self {
+            pointcloud: parse_stride("RECEIVER_POINTCLOUD_DECIMATE", 3),
+            rgb: parse_stride("RECEIVER_RGB_DECIMATE", 5),
+            depth: parse_stride("RECEIVER_DEPTH_DECIMATE", 5),
+        }
+    }
+}
+
+fn parse_stride(var: &str, default: u64) -> u64 {
+    std::env::var(var)
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .map(|n| if n == 0 { 1 } else { n })
+        .unwrap_or(default)
+}
+
+struct CmdVelEmitter<'a> {
+    node: &'a mut DoraNode,
+    output: &'a DataId,
+    started: Instant,
+}
+
 fn main() -> eyre::Result<()> {
     let _ = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .try_init();
@@ -40,16 +73,26 @@ fn main() -> eyre::Result<()> {
     let started = Instant::now();
     let viewer = open_rerun_sink()?;
     let counts: [AtomicU64; 8] = Default::default();
+    let decimate = DecimationConfig::from_env();
     log::info!("[receiver] started; rerun sink={}", viewer.is_some());
 
     while let Some(event) = events.recv() {
         match event {
             Event::Input { id, data, .. } => {
-                if let Err(e) = handle_input(&id, &data.0, &counts, viewer.as_ref()) {
+                let mut emitter = CmdVelEmitter {
+                    node: &mut node,
+                    output: &cmd_vel_id,
+                    started,
+                };
+                if let Err(e) = handle_input(
+                    &id,
+                    &data.0,
+                    &counts,
+                    viewer.as_ref(),
+                    &decimate,
+                    &mut emitter,
+                ) {
                     log::warn!("[receiver] {id}: handle failed: {e}");
-                }
-                if id.as_str() == "odometry" {
-                    publish_cmd_vel(&mut node, &cmd_vel_id, started)?;
                 }
             }
             Event::Stop(_) => {
@@ -67,6 +110,8 @@ fn handle_input(
     data: &arrow::array::ArrayRef,
     counts: &[AtomicU64; 8],
     viewer: Option<&RecordingStream>,
+    decimate: &DecimationConfig,
+    emitter: &mut CmdVelEmitter<'_>,
 ) -> eyre::Result<()> {
     match id.as_str() {
         "lidar_flatscan" => {
@@ -93,12 +138,9 @@ fn handle_input(
                     cloud.points.len()
                 );
             }
-            // Decimate pointcloud → rerun. 44k points × 10 Hz × full buffer = ~17 MB/s
-            // pre-arrow encode; the gRPC client backpressures fast on a single
-            // Linux-host viewer. Every 3rd scan ≈ 3 Hz keeps motion smooth.
             if let Some(rec) = viewer {
-                if n.is_multiple_of(3) {
-                    log_pointcloud_to_rerun(rec, &cloud)?;
+                if n % decimate.pointcloud == 0 {
+                    log_pointcloud_to_rerun(rec, data)?;
                 }
             }
         }
@@ -113,10 +155,9 @@ fn handle_input(
                     rgb.pixels.len()
                 );
             }
-            // Decimate RGB to ~6 Hz (raw is 30 Hz × 921 600 B = 28 MB/s).
             if let Some(rec) = viewer {
-                if n.is_multiple_of(5) {
-                    log_rgb_to_rerun(rec, &rgb)?;
+                if n % decimate.rgb == 0 {
+                    log_rgb_to_rerun(rec, data)?;
                 }
             }
         }
@@ -132,8 +173,8 @@ fn handle_input(
                 );
             }
             if let Some(rec) = viewer {
-                if n.is_multiple_of(5) {
-                    log_depth_to_rerun(rec, &depth)?;
+                if n % decimate.depth == 0 {
+                    log_depth_to_rerun(rec, data)?;
                 }
             }
         }
@@ -197,6 +238,7 @@ fn handle_input(
                 rec.log("dora/odom/lin/x", &Scalars::single(odom.lin_vel_x))?;
                 rec.log("dora/odom/ang/z", &Scalars::single(odom.ang_vel_z))?;
             }
+            publish_cmd_vel(emitter)?;
         }
         "cmd_vel_observed" => {
             let n = bump(counts, 7);
@@ -213,8 +255,14 @@ fn handle_input(
                 );
             }
             if let Some(rec) = viewer {
-                rec.log("dora/cmd_vel/linear/x", &Scalars::single(twist.linear_x as f64))?;
-                rec.log("dora/cmd_vel/angular/z", &Scalars::single(twist.angular_z as f64))?;
+                rec.log(
+                    "dora/cmd_vel/linear/x",
+                    &Scalars::single(twist.linear_x as f64),
+                )?;
+                rec.log(
+                    "dora/cmd_vel/angular/z",
+                    &Scalars::single(twist.angular_z as f64),
+                )?;
             }
         }
         other => {
@@ -224,12 +272,8 @@ fn handle_input(
     Ok(())
 }
 
-fn publish_cmd_vel(
-    node: &mut DoraNode,
-    output: &DataId,
-    started: Instant,
-) -> eyre::Result<()> {
-    let timestamp_ns = started.elapsed().as_nanos() as i64;
+fn publish_cmd_vel(emitter: &mut CmdVelEmitter<'_>) -> eyre::Result<()> {
+    let timestamp_ns = emitter.started.elapsed().as_nanos() as i64;
     let twist = ArrowCmdVel {
         linear_x: CMD_VEL_LINEAR_X,
         linear_y: 0.0,
@@ -241,7 +285,9 @@ fn publish_cmd_vel(
     };
     let batch = to_record_batch(&twist)?;
     let array = StructArray::from(batch);
-    node.send_output(output.clone(), MetadataParameters::default(), array)?;
+    emitter
+        .node
+        .send_output(emitter.output.clone(), MetadataParameters::default(), array)?;
     Ok(())
 }
 
@@ -258,28 +304,30 @@ fn open_rerun_sink() -> eyre::Result<Option<RecordingStream>> {
     Ok(Some(rec))
 }
 
-fn log_pointcloud_to_rerun(
-    rec: &RecordingStream,
-    cloud: &isaac_sim_arrow::lidar::pointcloud::LidarPointCloudOwned,
-) -> eyre::Result<()> {
+fn log_pointcloud_to_rerun(rec: &RecordingStream, data: &ArrayRef) -> eyre::Result<()> {
+    let array = data
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| eyre::eyre!("lidar_pointcloud payload is not a StructArray"))?;
+    let cloud = decode_pointcloud_borrowed(array)?;
     let n = cloud.points.len() / 3;
-    let positions: Vec<[f32; 3]> = (0..n)
-        .map(|i| {
-            [
-                cloud.points[3 * i],
-                cloud.points[3 * i + 1],
-                cloud.points[3 * i + 2],
-            ]
-        })
-        .collect();
-    rec.log("dora/lidar_pointcloud", &Points3D::new(positions))?;
+    if n == 0 {
+        return Ok(());
+    }
+    let positions: &[[f32; 3]] = bytemuck::cast_slice(&cloud.points[..n * 3]);
+    rec.log(
+        "dora/lidar_pointcloud",
+        &Points3D::new(positions.iter().copied()),
+    )?;
     Ok(())
 }
 
-fn log_rgb_to_rerun(
-    rec: &RecordingStream,
-    rgb: &isaac_sim_arrow::camera::rgb::CameraRgbOwned,
-) -> eyre::Result<()> {
+fn log_rgb_to_rerun(rec: &RecordingStream, data: &ArrayRef) -> eyre::Result<()> {
+    let array = data
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| eyre::eyre!("camera_rgb payload is not a StructArray"))?;
+    let rgb = decode_rgb_borrowed(array)?;
     if rgb.width <= 0 || rgb.height <= 0 {
         return Ok(());
     }
@@ -287,15 +335,17 @@ fn log_rgb_to_rerun(
     if rgb.pixels.len() != expected {
         return Ok(());
     }
-    let img = Image::from_rgb24(rgb.pixels.clone(), [rgb.width as u32, rgb.height as u32]);
+    let img = Image::from_rgb24(rgb.pixels, [rgb.width as u32, rgb.height as u32]);
     rec.log("dora/camera_rgb", &img)?;
     Ok(())
 }
 
-fn log_depth_to_rerun(
-    rec: &RecordingStream,
-    depth: &isaac_sim_arrow::camera::depth::CameraDepthOwned,
-) -> eyre::Result<()> {
+fn log_depth_to_rerun(rec: &RecordingStream, data: &ArrayRef) -> eyre::Result<()> {
+    let array = data
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| eyre::eyre!("camera_depth payload is not a StructArray"))?;
+    let depth = decode_depth_borrowed(array)?;
     if depth.width <= 0 || depth.height <= 0 {
         return Ok(());
     }
@@ -303,7 +353,7 @@ fn log_depth_to_rerun(
     if depth.depths.len() != expected {
         return Ok(());
     }
-    let bytes: &[u8] = bytemuck::cast_slice(&depth.depths);
+    let bytes: &[u8] = bytemuck::cast_slice(depth.depths);
     let img = DepthImage::from_data_type_and_bytes(
         bytes,
         [depth.width as u32, depth.height as u32],
@@ -319,5 +369,5 @@ fn bump(counts: &[AtomicU64; 8], idx: usize) -> u64 {
 }
 
 fn first_or_periodic(seen: u64) -> bool {
-    seen == 0 || seen.is_multiple_of(50)
+    seen == 0 || seen % 50 == 0
 }

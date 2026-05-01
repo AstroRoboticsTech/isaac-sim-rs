@@ -104,6 +104,25 @@ The bridge's own consumer registry isn't subscribed to; this is the
 "subscription-only viz" path — useful when the algorithm node is the
 canonical place sensor data lands and rerun is downstream.
 
+### Decimation
+
+Three env vars control how often each high-bandwidth channel is
+forwarded to the rerun viewer. A value of `1` (or `0`) means every
+frame; the default keeps motion smooth on a single Linux host without
+saturating the gRPC proxy.
+
+| Variable                     | Default | Effect                                     |
+| ---------------------------- | ------- | ------------------------------------------ |
+| `RECEIVER_POINTCLOUD_DECIMATE` | `3`   | Forward every Nth pointcloud scan (~3 Hz)  |
+| `RECEIVER_RGB_DECIMATE`        | `5`   | Forward every Nth RGB frame (~6 Hz)        |
+| `RECEIVER_DEPTH_DECIMATE`      | `5`   | Forward every Nth depth frame (~6 Hz)      |
+
+```bash
+export RECEIVER_POINTCLOUD_DECIMATE=1   # full 10 Hz pointcloud
+export RECEIVER_RGB_DECIMATE=10         # 3 Hz RGB
+dora start dataflow.yml --detach
+```
+
 ## Stop
 
 ```bash

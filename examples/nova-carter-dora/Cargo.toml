@@ -1,20 +1,22 @@
+[workspace]
+
 [package]
 name = "example-nova-carter-dora"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-rust-version.workspace = true
+version = "5.1.0-alpha.0"
+edition = "2021"
+license = "MPL-2.0"
+repository = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+rust-version = "1.85"
 description = "End-to-end validation: Nova Carter scene as a dora source (Kit + isaac-sim-dora cdylib publishes 7 sensors + cmd_vel observation, subscribes to cmd_vel input). Receiver dora node decodes every channel via isaac-sim-dora subscribe shims, prints a per-channel summary, and emits a constant-arc Twist back into the bridge so Carter visibly drives. Optional rerun gRPC sink for the subscription-only viz pipeline."
 publish = false
 
 [dependencies]
 isaac-sim-dora = { path = "../../crates/isaac-sim-dora" }
 isaac-sim-arrow = { path = "../../crates/isaac-sim-arrow" }
-arrow = { workspace = true }
+arrow = "54"
 dora-node-api = { version = "0.5", features = ["tracing"] }
-rerun = { workspace = true }
-bytemuck = { workspace = true }
+rerun = "0.31"
+bytemuck = "1"
 eyre = "0.6"
-log = { workspace = true }
+log = "0.4"
 env_logger = "0.11"

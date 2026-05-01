@@ -1,0 +1,30 @@
+nodes:
+  - id: kit
+    path: ./launch-kit.sh
+    outputs:
+      - lidar_flatscan
+      - lidar_pointcloud
+      - camera_rgb
+      - camera_depth
+      - camera_info
+      - imu
+      - odometry
+      - cmd_vel_observed
+    inputs:
+      cmd_vel: receiver/cmd_vel
+
+  - id: receiver
+    path: ../../target/debug/example-nova-carter-dora
+    env:
+      RERUN_GRPC_ADDR: 127.0.0.1:9876
+    inputs:
+      lidar_flatscan: kit/lidar_flatscan
+      lidar_pointcloud: kit/lidar_pointcloud
+      camera_rgb: kit/camera_rgb
+      camera_depth: kit/camera_depth
+      camera_info: kit/camera_info
+      imu: kit/imu
+      odometry: kit/odometry
+      cmd_vel_observed: kit/cmd_vel_observed
+    outputs:
+      - cmd_vel

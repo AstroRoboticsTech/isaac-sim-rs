@@ -3524,6 +3524,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-nova-carter-dora"
+version = "5.1.0-alpha.0"
+dependencies = [
+ "arrow 54.3.1",
+ "bytemuck",
+ "dora-node-api",
+ "env_logger",
+ "eyre",
+ "isaac-sim-arrow",
+ "isaac-sim-dora",
+ "log",
+ "rerun",
+]
+
+[[package]]
 name = "eyre"
 version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,0 +1,20 @@
+[package]
+name = "example-nova-carter-dora"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "End-to-end validation: Nova Carter scene as a dora source (Kit + isaac-sim-dora cdylib publishes 7 sensors + cmd_vel observation, subscribes to cmd_vel input). Receiver dora node decodes every channel via isaac-sim-dora subscribe shims, prints a per-channel summary, and emits a constant-arc Twist back into the bridge so Carter visibly drives. Optional rerun gRPC sink for the subscription-only viz pipeline."
+publish = false
+
+[dependencies]
+isaac-sim-dora = { path = "../../crates/isaac-sim-dora" }
+isaac-sim-arrow = { path = "../../crates/isaac-sim-arrow" }
+arrow = { workspace = true }
+dora-node-api = { version = "0.5", features = ["tracing"] }
+rerun = { workspace = true }
+bytemuck = { workspace = true }
+eyre = "0.6"
+log = { workspace = true }
+env_logger = "0.11"

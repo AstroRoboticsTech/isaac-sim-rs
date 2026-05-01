@@ -48,13 +48,27 @@ pub fn schema() -> SchemaRef {
 
 pub fn to_record_batch(twist: &CmdVel) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
-        Arc::new(Float32Array::from(vec![twist.linear_x])),
-        Arc::new(Float32Array::from(vec![twist.linear_y])),
-        Arc::new(Float32Array::from(vec![twist.linear_z])),
-        Arc::new(Float32Array::from(vec![twist.angular_x])),
-        Arc::new(Float32Array::from(vec![twist.angular_y])),
-        Arc::new(Float32Array::from(vec![twist.angular_z])),
-        Arc::new(Int64Array::from(vec![twist.timestamp_ns])),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            twist.linear_x,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            twist.linear_y,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            twist.linear_z,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            twist.angular_x,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            twist.angular_y,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            twist.angular_z,
+        ))),
+        Arc::new(Int64Array::from_iter_values(std::iter::once(
+            twist.timestamp_ns,
+        ))),
     ];
     RecordBatch::try_new(schema(), columns)
 }

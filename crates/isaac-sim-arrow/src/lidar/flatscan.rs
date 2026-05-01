@@ -88,15 +88,29 @@ pub fn to_record_batch(scan: &LidarFlatScan) -> Result<RecordBatch, arrow::error
     let columns: Vec<ArrayRef> = vec![
         Arc::new(depths),
         Arc::new(intensities),
-        Arc::new(Float32Array::from(vec![scan.horizontal_fov])),
-        Arc::new(Float32Array::from(vec![scan.horizontal_resolution])),
-        Arc::new(Float32Array::from(vec![scan.azimuth_min])),
-        Arc::new(Float32Array::from(vec![scan.azimuth_max])),
-        Arc::new(Float32Array::from(vec![scan.depth_min])),
-        Arc::new(Float32Array::from(vec![scan.depth_max])),
-        Arc::new(Int32Array::from(vec![scan.num_rows])),
-        Arc::new(Int32Array::from(vec![scan.num_cols])),
-        Arc::new(Float32Array::from(vec![scan.rotation_rate])),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            scan.horizontal_fov,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            scan.horizontal_resolution,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            scan.azimuth_min,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            scan.azimuth_max,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            scan.depth_min,
+        ))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            scan.depth_max,
+        ))),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(scan.num_rows))),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(scan.num_cols))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(
+            scan.rotation_rate,
+        ))),
     ];
 
     RecordBatch::try_new(schema(), columns)

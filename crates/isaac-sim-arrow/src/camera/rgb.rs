@@ -66,15 +66,63 @@ fn list_u8(values: &[u8]) -> ListArray {
 pub fn to_record_batch(img: &CameraRgb) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(list_u8(img.pixels)),
-        Arc::new(Int32Array::from(vec![img.width])),
-        Arc::new(Int32Array::from(vec![img.height])),
-        Arc::new(Float32Array::from(vec![img.fx])),
-        Arc::new(Float32Array::from(vec![img.fy])),
-        Arc::new(Float32Array::from(vec![img.cx])),
-        Arc::new(Float32Array::from(vec![img.cy])),
-        Arc::new(Int64Array::from(vec![img.timestamp_ns])),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(img.width))),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(img.height))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(img.fx))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(img.fy))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(img.cx))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(img.cy))),
+        Arc::new(Int64Array::from_iter_values(std::iter::once(
+            img.timestamp_ns,
+        ))),
     ];
     RecordBatch::try_new(schema(), columns)
+}
+
+pub struct CameraRgbBorrowed<'a> {
+    pub pixels: &'a [u8],
+    pub width: i32,
+    pub height: i32,
+    pub fx: f32,
+    pub fy: f32,
+    pub cx: f32,
+    pub cy: f32,
+    pub timestamp_ns: i64,
+}
+
+pub fn from_struct_array_borrowed(
+    array: &StructArray,
+) -> Result<CameraRgbBorrowed<'_>, arrow::error::ArrowError> {
+    if array.is_empty() {
+        return Err(arrow::error::ArrowError::InvalidArgumentError(
+            "camera_rgb struct array is empty".into(),
+        ));
+    }
+    let pixels_list = array
+        .column(0)
+        .as_any()
+        .downcast_ref::<ListArray>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError("camera_rgb 'pixels' not ListArray".into())
+        })?;
+    let pixels = pixels_list
+        .values()
+        .as_any()
+        .downcast_ref::<UInt8Array>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError("camera_rgb 'pixels' inner not UInt8".into())
+        })?
+        .values();
+    Ok(CameraRgbBorrowed {
+        pixels,
+        width: scalar_i32(array, 1, "width")?,
+        height: scalar_i32(array, 2, "height")?,
+        fx: scalar_f32(array, 3, "fx")?,
+        fy: scalar_f32(array, 4, "fy")?,
+        cx: scalar_f32(array, 5, "cx")?,
+        cy: scalar_f32(array, 6, "cy")?,
+        timestamp_ns: scalar_i64(array, 7, "timestamp_ns")?,
+    })
 }
 
 pub fn from_struct_array(array: &StructArray) -> Result<CameraRgbOwned, arrow::error::ArrowError> {

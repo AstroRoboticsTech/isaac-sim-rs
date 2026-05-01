@@ -64,15 +64,92 @@ fn list_f32(values: &[f32]) -> ListArray {
 pub fn to_record_batch(img: &CameraDepth) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(list_f32(img.depths)),
-        Arc::new(Int32Array::from(vec![img.width])),
-        Arc::new(Int32Array::from(vec![img.height])),
-        Arc::new(Float32Array::from(vec![img.fx])),
-        Arc::new(Float32Array::from(vec![img.fy])),
-        Arc::new(Float32Array::from(vec![img.cx])),
-        Arc::new(Float32Array::from(vec![img.cy])),
-        Arc::new(Int64Array::from(vec![img.timestamp_ns])),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(img.width))),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(img.height))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(img.fx))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(img.fy))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(img.cx))),
+        Arc::new(Float32Array::from_iter_values(std::iter::once(img.cy))),
+        Arc::new(Int64Array::from_iter_values(std::iter::once(
+            img.timestamp_ns,
+        ))),
     ];
     RecordBatch::try_new(schema(), columns)
+}
+
+pub struct CameraDepthBorrowed<'a> {
+    pub depths: &'a [f32],
+    pub width: i32,
+    pub height: i32,
+    pub fx: f32,
+    pub fy: f32,
+    pub cx: f32,
+    pub cy: f32,
+    pub timestamp_ns: i64,
+}
+
+pub fn from_struct_array_borrowed(
+    array: &StructArray,
+) -> Result<CameraDepthBorrowed<'_>, arrow::error::ArrowError> {
+    if array.is_empty() {
+        return Err(arrow::error::ArrowError::InvalidArgumentError(
+            "camera_depth struct array is empty".into(),
+        ));
+    }
+    let depths_list = array
+        .column(0)
+        .as_any()
+        .downcast_ref::<ListArray>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError("camera_depth 'depths' not ListArray".into())
+        })?;
+    let depths = depths_list
+        .values()
+        .as_any()
+        .downcast_ref::<Float32Array>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError("camera_depth 'depths' inner not Float32".into())
+        })?
+        .values();
+    let i32_at = |idx: usize, name: &str| -> Result<i32, arrow::error::ArrowError> {
+        array
+            .column(idx)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .ok_or_else(|| {
+                arrow::error::ArrowError::SchemaError(format!("camera_depth '{name}' not Int32"))
+            })
+            .map(|a| a.value(0))
+    };
+    let f32_at = |idx: usize, name: &str| -> Result<f32, arrow::error::ArrowError> {
+        array
+            .column(idx)
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .ok_or_else(|| {
+                arrow::error::ArrowError::SchemaError(format!("camera_depth '{name}' not Float32"))
+            })
+            .map(|a| a.value(0))
+    };
+    Ok(CameraDepthBorrowed {
+        depths,
+        width: i32_at(1, "width")?,
+        height: i32_at(2, "height")?,
+        fx: f32_at(3, "fx")?,
+        fy: f32_at(4, "fy")?,
+        cx: f32_at(5, "cx")?,
+        cy: f32_at(6, "cy")?,
+        timestamp_ns: array
+            .column(7)
+            .as_any()
+            .downcast_ref::<Int64Array>()
+            .ok_or_else(|| {
+                arrow::error::ArrowError::SchemaError(
+                    "camera_depth 'timestamp_ns' not Int64".into(),
+                )
+            })?
+            .value(0),
+    })
 }
 
 pub fn from_struct_array(

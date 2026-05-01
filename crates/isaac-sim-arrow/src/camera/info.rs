@@ -102,9 +102,11 @@ pub fn to_record_batch(info: &CameraInfo) -> Result<RecordBatch, arrow::error::A
         Arc::new(list_f64(info.r)),
         Arc::new(list_f64(info.p)),
         Arc::new(list_f32(info.distortion)),
-        Arc::new(Int32Array::from(vec![info.width])),
-        Arc::new(Int32Array::from(vec![info.height])),
-        Arc::new(Int64Array::from(vec![info.timestamp_ns])),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(info.width))),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(info.height))),
+        Arc::new(Int64Array::from_iter_values(std::iter::once(
+            info.timestamp_ns,
+        ))),
     ];
     RecordBatch::try_new(schema(), columns)
 }

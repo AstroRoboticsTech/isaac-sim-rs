@@ -73,20 +73,48 @@ pub fn to_record_batch(odom: &Odometry) -> Result<RecordBatch, arrow::error::Arr
     let columns: Vec<ArrayRef> = vec![
         Arc::new(StringArray::from(vec![odom.chassis_frame_id])),
         Arc::new(StringArray::from(vec![odom.odom_frame_id])),
-        Arc::new(Float64Array::from(vec![odom.position_x])),
-        Arc::new(Float64Array::from(vec![odom.position_y])),
-        Arc::new(Float64Array::from(vec![odom.position_z])),
-        Arc::new(Float64Array::from(vec![odom.orientation_w])),
-        Arc::new(Float64Array::from(vec![odom.orientation_x])),
-        Arc::new(Float64Array::from(vec![odom.orientation_y])),
-        Arc::new(Float64Array::from(vec![odom.orientation_z])),
-        Arc::new(Float64Array::from(vec![odom.lin_vel_x])),
-        Arc::new(Float64Array::from(vec![odom.lin_vel_y])),
-        Arc::new(Float64Array::from(vec![odom.lin_vel_z])),
-        Arc::new(Float64Array::from(vec![odom.ang_vel_x])),
-        Arc::new(Float64Array::from(vec![odom.ang_vel_y])),
-        Arc::new(Float64Array::from(vec![odom.ang_vel_z])),
-        Arc::new(Int64Array::from(vec![odom.timestamp_ns])),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.position_x,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.position_y,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.position_z,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.orientation_w,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.orientation_x,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.orientation_y,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.orientation_z,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.lin_vel_x,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.lin_vel_y,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.lin_vel_z,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.ang_vel_x,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.ang_vel_y,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            odom.ang_vel_z,
+        ))),
+        Arc::new(Int64Array::from_iter_values(std::iter::once(
+            odom.timestamp_ns,
+        ))),
     ];
     RecordBatch::try_new(schema(), columns)
 }

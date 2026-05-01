@@ -52,11 +52,59 @@ fn list_f32(values: &[f32]) -> ListArray {
 pub fn to_record_batch(pc: &LidarPointCloud) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(list_f32(pc.points)),
-        Arc::new(Int32Array::from(vec![pc.num_points])),
-        Arc::new(Int32Array::from(vec![pc.width])),
-        Arc::new(Int32Array::from(vec![pc.height])),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(pc.num_points))),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(pc.width))),
+        Arc::new(Int32Array::from_iter_values(std::iter::once(pc.height))),
     ];
     RecordBatch::try_new(schema(), columns)
+}
+
+pub struct LidarPointCloudBorrowed<'a> {
+    pub points: &'a [f32],
+    pub num_points: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+pub fn from_struct_array_borrowed(
+    array: &StructArray,
+) -> Result<LidarPointCloudBorrowed<'_>, arrow::error::ArrowError> {
+    if array.is_empty() {
+        return Err(arrow::error::ArrowError::InvalidArgumentError(
+            "lidar_pointcloud struct array is empty".into(),
+        ));
+    }
+    let pts_list = array
+        .column(0)
+        .as_any()
+        .downcast_ref::<ListArray>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError("pointcloud 'points' not ListArray".into())
+        })?;
+    let points = pts_list
+        .values()
+        .as_any()
+        .downcast_ref::<Float32Array>()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::SchemaError("pointcloud 'points' inner not Float32".into())
+        })?
+        .values();
+    let i32_at = |idx: usize, name: &str| -> Result<i32, arrow::error::ArrowError> {
+        array
+            .column(idx)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .ok_or_else(|| {
+                arrow::error::ArrowError::SchemaError(format!("pointcloud '{name}' not Int32"))
+            })
+            .map(|a| a.value(0))
+    };
+    Ok(LidarPointCloudBorrowed {
+        points,
+        num_points: i32_at(1, "num_points")?,
+        width: i32_at(2, "width")?,
+        height: i32_at(3, "height")?,
+    })
 }
 
 pub fn from_struct_array(

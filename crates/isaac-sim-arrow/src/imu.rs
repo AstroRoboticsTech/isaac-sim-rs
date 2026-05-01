@@ -60,17 +60,39 @@ pub fn schema() -> SchemaRef {
 pub fn to_record_batch(imu: &Imu) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(StringArray::from(vec![imu.frame_id])),
-        Arc::new(Float64Array::from(vec![imu.lin_acc_x])),
-        Arc::new(Float64Array::from(vec![imu.lin_acc_y])),
-        Arc::new(Float64Array::from(vec![imu.lin_acc_z])),
-        Arc::new(Float64Array::from(vec![imu.ang_vel_x])),
-        Arc::new(Float64Array::from(vec![imu.ang_vel_y])),
-        Arc::new(Float64Array::from(vec![imu.ang_vel_z])),
-        Arc::new(Float64Array::from(vec![imu.orientation_w])),
-        Arc::new(Float64Array::from(vec![imu.orientation_x])),
-        Arc::new(Float64Array::from(vec![imu.orientation_y])),
-        Arc::new(Float64Array::from(vec![imu.orientation_z])),
-        Arc::new(Int64Array::from(vec![imu.timestamp_ns])),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.lin_acc_x,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.lin_acc_y,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.lin_acc_z,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.ang_vel_x,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.ang_vel_y,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.ang_vel_z,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.orientation_w,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.orientation_x,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.orientation_y,
+        ))),
+        Arc::new(Float64Array::from_iter_values(std::iter::once(
+            imu.orientation_z,
+        ))),
+        Arc::new(Int64Array::from_iter_values(std::iter::once(
+            imu.timestamp_ns,
+        ))),
     ];
     RecordBatch::try_new(schema(), columns)
 }

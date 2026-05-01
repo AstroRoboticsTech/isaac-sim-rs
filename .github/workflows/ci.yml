@@ -23,9 +23,9 @@ jobs:
       - name: cargo fmt
         run: cargo fmt --all --check
       - name: cargo check
-        run: cargo check --workspace --all-targets
+        run: cargo check --workspace --all-targets --all-features
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
     name: cargo test
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace
+      - run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace --all-features
 
   publish-dry-run:
     name: cargo publish --dry-run

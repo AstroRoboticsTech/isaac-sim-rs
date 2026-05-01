@@ -70,8 +70,8 @@ impl<T> ProducerSlot<T> {
 /// can co-exist and the C++ poll path looks up by target_id.
 ///
 /// The registry also owns a single observer channel; observers added
-/// via [`add_observer`] receive `(target_id, &T)` for every publish on
-/// any slot in this registry.
+/// via [`ProducerRegistry::add_observer`] receive `(target_id, &T)` for
+/// every publish on any slot in this registry.
 pub struct ProducerRegistry<T: 'static> {
     inner: OnceLock<Slots<T>>,
     observers: OnceLock<Arc<Channel<Observer<T>>>>,

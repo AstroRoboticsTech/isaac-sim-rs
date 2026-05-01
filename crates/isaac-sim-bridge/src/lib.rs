@@ -8,6 +8,7 @@
 //! the rlib path compiles on any machine without Isaac Sim installed.
 
 #![warn(missing_docs)]
+#![cfg_attr(not(feature = "cdylib"), allow(dead_code))]
 
 mod articulation;
 mod camera;
@@ -185,7 +186,6 @@ mod ffi {
 
 /// C++-compatible metadata structs shared across the cxx::bridge boundary.
 /// Fields are named after physical quantities and need no further prose.
-#[allow(missing_docs)]
 pub use ffi::{
     CameraDepthMeta, CameraInfoMeta, CameraRgbMeta, CmdVel, ImuMeta, LidarFlatScanMeta,
     LidarPointCloudMeta, OdometryMeta,

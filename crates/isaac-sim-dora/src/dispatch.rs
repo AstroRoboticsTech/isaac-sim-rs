@@ -7,10 +7,9 @@
 //! independent of dora's serialise + Zenoh write path so a slow peer
 //! can never backpressure the simulator.
 //!
-//! Codifies audit P6 ("Mutex<DoraNode> lock contention") for the
-//! dora side. The shared `Arc<Mutex<DoraNode>>` is still held only
-//! inside the drain thread, where one drain per output serialises
-//! sends naturally; there is no contention with other sensors.
+//! The shared `Arc<Mutex<DoraNode>>` is held only inside the drain
+//! thread, where one drain per output serialises sends naturally;
+//! there is no contention with other sensors.
 
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Arc;

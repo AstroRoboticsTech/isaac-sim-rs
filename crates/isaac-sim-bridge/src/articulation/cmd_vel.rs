@@ -75,7 +75,7 @@ pub fn poll_cmd_vel(target_id: &str, out: &mut CmdVel) -> bool {
     false
 }
 
-/// Rust-friendly variant of [`poll_cmd_vel`] for tests + adapter
+/// Rust-friendly variant of `poll_cmd_vel` for tests + adapter
 /// inspection. Returns `Some(CmdVel)` when a producer is registered
 /// and has published at least once; `None` otherwise.
 pub fn peek_cmd_vel(target_id: &str) -> Option<CmdVel> {

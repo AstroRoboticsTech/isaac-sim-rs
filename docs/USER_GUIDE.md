@@ -2,6 +2,8 @@
 
 You have Isaac Sim installed. You want to plug a Rust dataflow (dora) or remote viewer (rerun) into your simulation. This is the path.
 
+> Writing a downstream Rust crate that depends on `isaac-sim-rs`? See [`INTEGRATING.md`](INTEGRATING.md) for the cargo consumer track.
+
 ## 1. Install the extension
 
 Option A: extension manager — search "isaacsimrs" once the extension is published to the NVIDIA registry and click Install.

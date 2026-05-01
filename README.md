@@ -80,6 +80,8 @@ cargo add isaac-sim-rs -F full     # both
 
 Default features pull only `isaac-sim-arrow` (pure-Rust schema + decoders) — no Isaac Sim required. Adapter features (`dora`, `rerun`, `full`) pull the bridge rlib chain.
 
+See [`docs/INTEGRATING.md`](docs/INTEGRATING.md) for the full Rust integration guide (feature-flag tradeoffs, integration shapes, compat constraints).
+
 Minimal example: see [`examples/lidar-receiver/`](examples/lidar-receiver/) for a working dora subscriber that decodes FlatScan batches into native structs.
 
 ### Isaac Sim user (extension manager)
@@ -105,7 +107,7 @@ You have Isaac Sim installed and want to plug a Rust dataflow (dora) or remote v
 
 4. Author your OmniGraph: drop `OgnPublish*ToRust` nodes wired to NVIDIA RTX sensor sources; the extension forwards every tick into the configured adapters.
 
-See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) (coming in 0.1) for the full walkthrough.
+See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) for the full walkthrough.
 
 ### Source build (developer setup)
 

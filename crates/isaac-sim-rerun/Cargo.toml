@@ -5,11 +5,21 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "rerun adapter for the isaac-sim-rs SDK. rlib exposing a Viewer builder; users link this into a tiny cdylib that the bridge dlopens via ISAAC_SIM_RS_RERUN_RUNNER. The Viewer opens a rerun RecordingStream over gRPC and registers sensor consumers that log each sample to a (possibly remote) rerun viewer. LiDAR is the first sensor module; camera, IMU, articulation feedback follow."
-publish = false
+description = "Rerun viewer adapter for Isaac Sim sensor pipelines."
+license-file = "../../LICENSE"
+keywords = ["isaac-sim", "robotics", "omniverse", "simulation", "rerun"]
+categories = ["science::robotics", "simulation"]
+documentation = "https://docs.rs/isaac-sim-rerun"
+homepage = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+default-target = "x86_64-unknown-linux-gnu"
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-isaac-sim-bridge = { path = "../isaac-sim-bridge" }
+isaac-sim-bridge = { path = "../isaac-sim-bridge", version = "0.1" }
 rerun = { workspace = true }
 arc-swap = { workspace = true }
 bytemuck = { workspace = true }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::OnceLock;
 
 use crate::channel::{channel_singleton, Channel};
@@ -23,6 +24,8 @@ fn channel() -> &'static Channel<Callback> {
     unsafe { &*isaac_sim_bridge_channel_camera_depth() }
 }
 
+/// Register a callback to receive every depth camera frame the bridge dispatches.
+/// The closure runs on the bridge thread; keep it bounded.
 pub fn register_camera_depth_consumer<F>(cb: F)
 where
     F: Fn(&str, &[f32], &CameraDepthMeta) + Send + Sync + 'static,
@@ -30,14 +33,17 @@ where
     channel().register(Box::new(cb));
 }
 
+/// Fan out a single depth camera frame to all registered consumers.
 pub fn dispatch_camera_depth(source_id: &str, depths: &[f32], meta: &CameraDepthMeta) {
     channel().for_each(|cb| cb(source_id, depths, meta));
 }
 
+/// Number of currently registered depth camera consumers.
 pub fn camera_depth_consumer_count() -> usize {
     channel().count()
 }
 
+/// Entry point called by the C++ bridge on each OmniGraph tick.
 pub fn forward_camera_depth(source_id: &str, depths: &[f32], meta: &CameraDepthMeta) {
     log::debug!(
         "[isaac-sim-rs] forward_camera_depth: source='{}' wxh={}x{} samples={}",

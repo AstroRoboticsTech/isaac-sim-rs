@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! cmd_vel: bidirectional articulation channel.
 //!
 //! [`subscribe`] is the dora→bridge direction: decode a Twist Arrow
@@ -10,7 +11,6 @@
 //! without coupling to whichever Rust source originally published it.
 
 pub mod publish;
-pub mod subscribe;
+pub(crate) mod subscribe;
 
-pub use publish::register_dora_cmd_vel_publisher;
-pub use subscribe::start_cmd_vel_subscriber;
+pub(crate) use subscribe::start_cmd_vel_subscriber;

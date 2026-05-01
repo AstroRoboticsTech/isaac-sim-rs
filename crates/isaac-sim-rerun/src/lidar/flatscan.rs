@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::Arc;
 
 use isaac_sim_bridge::{register_lidar_flatscan_consumer, LidarFlatScan, LidarFlatScanMeta};
@@ -16,13 +17,6 @@ impl RerunRender for LidarFlatScan {
     fn register(rec: RecordingStream, source: String, entity_path: String) {
         register_rerun_lidar_flatscan_publisher(rec, source, entity_path);
     }
-}
-
-pub fn flatscan_to_points(meta: &LidarFlatScanMeta, depths: &[f32]) -> Vec<[f32; 3]> {
-    let n = depths.len();
-    let mut positions = Vec::with_capacity(n);
-    fill_polar_into(meta, depths, &mut positions);
-    positions
 }
 
 fn fill_polar_into(meta: &LidarFlatScanMeta, depths: &[f32], out: &mut Vec<[f32; 3]>) {
@@ -116,6 +110,13 @@ pub fn register_rerun_lidar_flatscan_publisher(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn flatscan_to_points(meta: &LidarFlatScanMeta, depths: &[f32]) -> Vec<[f32; 3]> {
+        let n = depths.len();
+        let mut positions = Vec::with_capacity(n);
+        fill_polar_into(meta, depths, &mut positions);
+        positions
+    }
 
     fn meta_270deg() -> LidarFlatScanMeta {
         LidarFlatScanMeta {

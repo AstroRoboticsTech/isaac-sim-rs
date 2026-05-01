@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::{Arc, OnceLock};
 
 use crate::ffi::CmdVel;
@@ -35,6 +36,7 @@ pub fn register_cmd_vel_producer(target_id: impl Into<String>) -> Arc<ProducerSl
     registry().register(target_id)
 }
 
+/// Number of distinct articulation targets that have registered a producer slot.
 pub fn cmd_vel_producer_count() -> usize {
     registry().count()
 }
@@ -54,6 +56,7 @@ where
     registry().add_observer(cb);
 }
 
+/// Number of registered cmd_vel observers (adapters watching the actuation stream).
 pub fn cmd_vel_consumer_count() -> usize {
     registry().observer_count()
 }

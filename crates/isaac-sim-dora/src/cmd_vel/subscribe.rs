@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Reverse-direction adapter: dora → bridge.
 //!
 //! Whereas every other module in this crate forwards bridge data onto

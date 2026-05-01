@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::{Arc, OnceLock, RwLock};
 
 /// Generic registry of typed callbacks.
@@ -16,12 +17,15 @@ pub struct Channel<C> {
 }
 
 impl<C> Channel<C> {
+    /// Create an empty channel with no registered callbacks.
     pub fn new() -> Self {
         Self {
             cbs: RwLock::new(Arc::new(Vec::new())),
         }
     }
 
+    /// Append a callback to the registry. Copy-on-write so concurrent
+    /// `for_each` calls on the previous snapshot are unaffected.
     pub fn register(&self, cb: C) {
         let mut guard = self.cbs.write().unwrap();
         let mut next: Vec<Arc<C>> = (**guard).clone();
@@ -29,10 +33,14 @@ impl<C> Channel<C> {
         *guard = Arc::new(next);
     }
 
+    /// Number of registered callbacks at the instant of the call.
     pub fn count(&self) -> usize {
         self.cbs.read().unwrap().len()
     }
 
+    /// Snapshot the callback list and invoke `f` on each entry. New
+    /// registrations that arrive during iteration do not affect the current
+    /// dispatch — they only appear in subsequent `for_each` calls.
     pub fn for_each<F: FnMut(&C)>(&self, mut f: F) {
         let snap = self.cbs.read().unwrap().clone();
         for cb in snap.iter() {

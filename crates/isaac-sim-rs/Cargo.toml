@@ -1,0 +1,34 @@
+[package]
+name = "isaac-sim-rs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Rust SDK for NVIDIA Isaac Sim - sensor + actuator adapters (dora, rerun) over a cxx::bridge core"
+license-file = "../../LICENSE"
+keywords = ["isaac-sim", "robotics", "omniverse", "simulation", "sdk"]
+categories = ["science::robotics", "simulation"]
+documentation = "https://docs.rs/isaac-sim-rs"
+homepage = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+default-target = "x86_64-unknown-linux-gnu"
+all-features = false
+features = ["full"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["arrow"]
+arrow   = ["dep:isaac-sim-arrow"]
+bridge  = ["dep:isaac-sim-bridge", "arrow"]
+dora    = ["bridge", "dep:isaac-sim-dora"]
+rerun   = ["bridge", "dep:isaac-sim-rerun"]
+full    = ["dora", "rerun"]
+
+[dependencies]
+isaac-sim-arrow  = { path = "../isaac-sim-arrow",  version = "0.1", optional = true }
+isaac-sim-bridge = { path = "../isaac-sim-bridge", version = "0.1", optional = true }
+isaac-sim-dora   = { path = "../isaac-sim-dora",   version = "0.1", optional = true }
+isaac-sim-rerun  = { path = "../isaac-sim-rerun",  version = "0.1", optional = true }

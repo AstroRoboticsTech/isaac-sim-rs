@@ -1,9 +1,13 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Arrow encoder and decoder for the chassis odometry channel.
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::{Array, ArrayRef, Float64Array, Int64Array, StringArray, StructArray};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
+/// Borrowed view of a single chassis odometry sample, used as input to [`to_record_batch`].
+#[allow(missing_docs)]
 pub struct Odometry<'a> {
     pub chassis_frame_id: &'a str,
     pub odom_frame_id: &'a str,
@@ -23,7 +27,9 @@ pub struct Odometry<'a> {
     pub timestamp_ns: i64,
 }
 
+/// Owned variant returned by [`from_struct_array`].
 #[derive(Debug, Clone, PartialEq)]
+#[allow(missing_docs)]
 pub struct OdometryOwned {
     pub chassis_frame_id: String,
     pub odom_frame_id: String,
@@ -43,6 +49,7 @@ pub struct OdometryOwned {
     pub timestamp_ns: i64,
 }
 
+/// Stable Arrow schema for an `Odometry` record batch.
 pub fn schema() -> SchemaRef {
     static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
     SCHEMA
@@ -69,6 +76,25 @@ pub fn schema() -> SchemaRef {
         .clone()
 }
 
+/// Encode an `Odometry` sample as a single-row `RecordBatch` matching [`schema`].
+///
+/// # Example
+///
+/// ```
+/// use isaac_sim_arrow::odometry::{Odometry, to_record_batch};
+/// let odom = Odometry {
+///     chassis_frame_id: "base_link",
+///     odom_frame_id: "odom",
+///     position_x: 1.0, position_y: 2.0, position_z: 0.0,
+///     orientation_w: 1.0, orientation_x: 0.0, orientation_y: 0.0, orientation_z: 0.0,
+///     lin_vel_x: 0.4, lin_vel_y: 0.0, lin_vel_z: 0.0,
+///     ang_vel_x: 0.0, ang_vel_y: 0.0, ang_vel_z: 0.3,
+///     timestamp_ns: 7,
+/// };
+/// let batch = to_record_batch(&odom).unwrap();
+/// assert_eq!(batch.num_rows(), 1);
+/// assert_eq!(batch.num_columns(), 16);
+/// ```
 pub fn to_record_batch(odom: &Odometry) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(StringArray::from(vec![odom.chassis_frame_id])),
@@ -119,6 +145,28 @@ pub fn to_record_batch(odom: &Odometry) -> Result<RecordBatch, arrow::error::Arr
     RecordBatch::try_new(schema(), columns)
 }
 
+/// Decode the first row of a `StructArray` into a heap-owned `OdometryOwned`.
+///
+/// # Example
+///
+/// ```
+/// use arrow::array::StructArray;
+/// use isaac_sim_arrow::odometry::{Odometry, to_record_batch, from_struct_array};
+/// let odom = Odometry {
+///     chassis_frame_id: "base_link",
+///     odom_frame_id: "odom",
+///     position_x: 1.0, position_y: 2.0, position_z: 0.0,
+///     orientation_w: 1.0, orientation_x: 0.0, orientation_y: 0.0, orientation_z: 0.0,
+///     lin_vel_x: 0.4, lin_vel_y: 0.0, lin_vel_z: 0.0,
+///     ang_vel_x: 0.0, ang_vel_y: 0.0, ang_vel_z: 0.3,
+///     timestamp_ns: 7,
+/// };
+/// let batch = to_record_batch(&odom).unwrap();
+/// let array = StructArray::from(batch);
+/// let owned = from_struct_array(&array).unwrap();
+/// assert_eq!(owned.chassis_frame_id, "base_link");
+/// assert_eq!(owned.timestamp_ns, 7);
+/// ```
 pub fn from_struct_array(array: &StructArray) -> Result<OdometryOwned, arrow::error::ArrowError> {
     if array.is_empty() {
         return Err(arrow::error::ArrowError::InvalidArgumentError(

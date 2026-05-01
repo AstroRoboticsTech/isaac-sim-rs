@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use isaac_sim_bridge::{register_cmd_vel_consumer, CmdVel, CmdVelChannel};
 use rerun::{RecordingStream, Scalars};
 

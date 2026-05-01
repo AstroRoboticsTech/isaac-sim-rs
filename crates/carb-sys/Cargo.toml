@@ -1,3 +1,6 @@
+# carb-sys binds NVIDIA Carbonite headers that ship with Isaac Sim.
+# Those headers are not redistributable; this crate is dev-only and
+# stays publish = false. Workspace consumers depend on it via path.
 [package]
 name = "carb-sys"
 version.workspace = true

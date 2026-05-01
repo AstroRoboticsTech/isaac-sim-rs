@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Arrow encoder and decoder for the camera-info (calibration metadata) channel.
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::{
@@ -8,6 +10,8 @@ use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
+/// Borrowed view of camera calibration metadata, used as input to [`to_record_batch`].
+#[allow(missing_docs)]
 pub struct CameraInfo<'a> {
     pub frame_id: &'a str,
     pub distortion_model: &'a str,
@@ -21,7 +25,9 @@ pub struct CameraInfo<'a> {
     pub timestamp_ns: i64,
 }
 
+/// Owned variant returned by [`from_struct_array`].
 #[derive(Debug, Clone, PartialEq)]
+#[allow(missing_docs)]
 pub struct CameraInfoOwned {
     pub frame_id: String,
     pub distortion_model: String,
@@ -35,6 +41,7 @@ pub struct CameraInfoOwned {
     pub timestamp_ns: i64,
 }
 
+/// Stable Arrow schema for a `CameraInfo` record batch.
 pub fn schema() -> SchemaRef {
     static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
     SCHEMA
@@ -93,6 +100,23 @@ fn list_f32(values: &[f32]) -> ListArray {
     )
 }
 
+/// Encode a `CameraInfo` frame as a single-row `RecordBatch` matching [`schema`].
+///
+/// # Example
+///
+/// ```
+/// use isaac_sim_arrow::camera::info::{CameraInfo, to_record_batch};
+/// let k = [500.0_f64, 0.0, 320.0, 0.0, 500.0, 240.0, 0.0, 0.0, 1.0];
+/// let r = [1.0_f64, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+/// let p = [500.0_f64, 0.0, 320.0, 0.0, 0.0, 500.0, 240.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+/// let d = [0.0_f32; 5];
+/// let info = CameraInfo { frame_id: "cam", distortion_model: "plumb_bob",
+///     projection_type: "pinhole", k: &k, r: &r, p: &p, distortion: &d,
+///     width: 640, height: 480, timestamp_ns: 1 };
+/// let batch = to_record_batch(&info).unwrap();
+/// assert_eq!(batch.num_rows(), 1);
+/// assert_eq!(batch.num_columns(), 10);
+/// ```
 pub fn to_record_batch(info: &CameraInfo) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(StringArray::from(vec![info.frame_id])),
@@ -111,6 +135,26 @@ pub fn to_record_batch(info: &CameraInfo) -> Result<RecordBatch, arrow::error::A
     RecordBatch::try_new(schema(), columns)
 }
 
+/// Decode the first row of a `StructArray` into a heap-owned `CameraInfoOwned`.
+///
+/// # Example
+///
+/// ```
+/// use arrow::array::StructArray;
+/// use isaac_sim_arrow::camera::info::{CameraInfo, to_record_batch, from_struct_array};
+/// let k = [500.0_f64, 0.0, 320.0, 0.0, 500.0, 240.0, 0.0, 0.0, 1.0];
+/// let r = [1.0_f64, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+/// let p = [500.0_f64, 0.0, 320.0, 0.0, 0.0, 500.0, 240.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+/// let d = [0.0_f32; 5];
+/// let info = CameraInfo { frame_id: "cam", distortion_model: "plumb_bob",
+///     projection_type: "pinhole", k: &k, r: &r, p: &p, distortion: &d,
+///     width: 640, height: 480, timestamp_ns: 2 };
+/// let batch = to_record_batch(&info).unwrap();
+/// let array = StructArray::from(batch);
+/// let owned = from_struct_array(&array).unwrap();
+/// assert_eq!(owned.frame_id, "cam");
+/// assert_eq!(owned.width, 640);
+/// ```
 pub fn from_struct_array(array: &StructArray) -> Result<CameraInfoOwned, arrow::error::ArrowError> {
     if array.is_empty() {
         return Err(arrow::error::ArrowError::InvalidArgumentError(

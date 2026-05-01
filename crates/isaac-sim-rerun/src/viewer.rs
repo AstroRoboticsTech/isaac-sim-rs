@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+//! The `Viewer` builder: configure sensor subscriptions, then call `run()` to stream to rerun.
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -39,10 +41,13 @@ pub struct Viewer {
 }
 
 impl Viewer {
+    /// Create a builder with no sensors subscribed and the default gRPC address.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Override the rerun gRPC endpoint. Default: `127.0.0.1:9876` (or
+    /// `ISAAC_SIM_RS_RERUN_GRPC_ADDR` env var if set at `run()` time).
     pub fn with_grpc_addr(mut self, addr: impl Into<String>) -> Self {
         self.grpc_addr = Some(addr.into());
         self
@@ -70,6 +75,7 @@ impl Viewer {
         self
     }
 
+    /// Convenience shorthand for `with_source(LidarFlatScan, source, entity_path)`.
     pub fn with_lidar_flatscan(
         self,
         source: impl Into<String>,
@@ -78,6 +84,7 @@ impl Viewer {
         self.with_source(LidarFlatScan, source, entity_path)
     }
 
+    /// Convenience shorthand for `with_source(LidarPointCloud, source, entity_path)`.
     pub fn with_lidar_pointcloud(
         self,
         source: impl Into<String>,
@@ -86,6 +93,8 @@ impl Viewer {
         self.with_source(LidarPointCloud, source, entity_path)
     }
 
+    /// Attach a blueprint closure that runs on the first sensor's `RecordingStream`
+    /// before any frame is forwarded. Use to set up rerun blueprint layout.
     pub fn with_blueprint<F>(mut self, f: F) -> Self
     where
         F: FnOnce(&RecordingStream) -> eyre::Result<()> + 'static,
@@ -94,6 +103,8 @@ impl Viewer {
         self
     }
 
+    /// Open gRPC connections and register all configured sensor consumers. Blocks
+    /// until the process exits (the bridge thread drives the consumer callbacks).
     pub fn run(self) -> eyre::Result<()> {
         let addr = self.grpc_addr.unwrap_or_else(|| {
             env::var(GRPC_ADDR_ENV).unwrap_or_else(|_| DEFAULT_GRPC_ADDR.to_string())

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Static schema validation for the bridge's OGN node files.
 //!
 //! Catches the d7a102a bug class — schema authoring mistakes that compile

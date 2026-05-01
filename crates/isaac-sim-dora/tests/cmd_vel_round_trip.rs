@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! End-to-end integration test for the Rust→C++ cmd_vel path.
 //!
 //! Build a Twist Arrow batch the way an upstream dora node would,

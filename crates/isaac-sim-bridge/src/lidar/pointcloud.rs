@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::OnceLock;
 
 use crate::channel::{channel_singleton, Channel};
@@ -23,6 +24,8 @@ fn channel() -> &'static Channel<Callback> {
     unsafe { &*isaac_sim_bridge_channel_lidar_pointcloud() }
 }
 
+/// Register a callback to receive every `LidarPointCloud` frame the bridge
+/// dispatches. The closure runs on the bridge thread; keep it bounded.
 pub fn register_lidar_pointcloud_consumer<F>(cb: F)
 where
     F: Fn(&str, &[f32], &LidarPointCloudMeta) + Send + Sync + 'static,
@@ -30,14 +33,17 @@ where
     channel().register(Box::new(cb));
 }
 
+/// Fan out a single `LidarPointCloud` frame to all registered consumers.
 pub fn dispatch_lidar_pointcloud(source_id: &str, points: &[f32], meta: &LidarPointCloudMeta) {
     channel().for_each(|cb| cb(source_id, points, meta));
 }
 
+/// Number of currently registered `LidarPointCloud` consumers.
 pub fn lidar_pointcloud_consumer_count() -> usize {
     channel().count()
 }
 
+/// Entry point called by the C++ bridge on each OmniGraph tick.
 pub fn forward_lidar_pointcloud(source_id: &str, points: &[f32], meta: &LidarPointCloudMeta) {
     log::debug!(
         "[isaac-sim-rs] forward_lidar_pointcloud: source='{}' n={} (floats={}, width={}, height={})",

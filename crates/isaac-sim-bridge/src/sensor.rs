@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 /// Type-level identifier for a sensor domain.
 ///
 /// `NAME` simultaneously plays four roles:
@@ -23,5 +24,6 @@
 /// `LidarPointCloud`). Adapters layer their own per-sensor trait on top
 /// (`RerunRender`, `DoraPublish`) keyed on these markers.
 pub trait Sensor: 'static {
+    /// Unique lowercase sensor identifier; see trait-level doc for all four roles and routing constraints.
     const NAME: &'static str;
 }

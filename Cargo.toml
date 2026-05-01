@@ -1,3 +1,5 @@
+# Crate versions follow semver from 0.1.0 onward. Compatible Isaac Sim
+# versions are listed in [workspace.metadata].isaac-sim-target and per-crate READMEs.
 [workspace]
 resolver = "2"
 members = [
@@ -6,14 +8,20 @@ members = [
     "crates/isaac-sim-bridge",
     "crates/isaac-sim-dora",
     "crates/isaac-sim-rerun",
-    "examples/lidar-receiver",
-    "examples/nova-carter",
+    "crates/isaac-sim-rs",
 ]
 
+[workspace.metadata]
+isaac-sim-target = "5.1"
+
+[workspace.metadata.release]
+shared-version = true
+
 [workspace.package]
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 edition = "2021"
 license = "MPL-2.0"
+license-file = "LICENSE"
 repository = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
 rust-version = "1.85"
 

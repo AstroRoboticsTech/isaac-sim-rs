@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::Once;
 
 use crate::lidar::flatscan::register_lidar_flatscan_consumer;

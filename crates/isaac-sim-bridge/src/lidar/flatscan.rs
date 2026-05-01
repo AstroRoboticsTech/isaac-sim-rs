@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::OnceLock;
 
 use crate::channel::{channel_singleton, Channel};
@@ -31,6 +32,10 @@ fn channel() -> &'static Channel<Callback> {
     unsafe { &*isaac_sim_bridge_channel_lidar_flatscan() }
 }
 
+/// Register a callback to receive every `LidarFlatScan` frame the bridge
+/// dispatches. The closure runs on the bridge thread; keep it bounded.
+/// Registrations accumulate for the lifetime of the process — there is no
+/// unregister; drop the adapter runner to stop receiving frames.
 pub fn register_lidar_flatscan_consumer<F>(cb: F)
 where
     F: Fn(&str, &[f32], &[u8], &LidarFlatScanMeta) + Send + Sync + 'static,
@@ -38,6 +43,9 @@ where
     channel().register(Box::new(cb));
 }
 
+/// Fan out a single `LidarFlatScan` frame to all registered consumers.
+/// Called by `forward_lidar_flatscan` after logging; also callable directly
+/// from tests or synthetic sources that bypass the C++ bridge path.
 pub fn dispatch_lidar_flatscan(
     source_id: &str,
     scan: &[f32],
@@ -47,10 +55,13 @@ pub fn dispatch_lidar_flatscan(
     channel().for_each(|cb| cb(source_id, scan, intensities, meta));
 }
 
+/// Number of currently registered `LidarFlatScan` consumers.
 pub fn lidar_flatscan_consumer_count() -> usize {
     channel().count()
 }
 
+/// Entry point called by the C++ bridge on each OmniGraph tick. Logs
+/// a debug summary then calls `dispatch_lidar_flatscan` to fan out.
 pub fn forward_lidar_flatscan(
     source_id: &str,
     scan: &[f32],

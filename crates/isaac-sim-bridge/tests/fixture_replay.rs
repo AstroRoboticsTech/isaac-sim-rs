@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Replays captured annotator output fixtures through the bridge's
 //! dispatch chain to assert the C++→Rust shape still matches what
 //! NVIDIA's RTX annotators emit. See `tests/fixtures/README.md`.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Latest-wins per-output pump for the dora adapter.
 //!
 //! Same shape as the rerun adapter's `dispatch`: publisher's

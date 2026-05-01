@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use isaac_sim_bridge::{register_camera_info_consumer, CameraInfo, CameraInfoMeta};
 use rerun::{Pinhole, RecordingStream};
 

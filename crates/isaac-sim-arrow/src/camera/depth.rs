@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Arrow encoder and decoder for the per-pixel depth (float32, metres) camera channel.
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::{Array, ArrayRef, Float32Array, Int32Array, Int64Array, ListArray, StructArray};
@@ -5,6 +7,8 @@ use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
+/// Borrowed view of a single depth camera frame, used as input to [`to_record_batch`].
+#[allow(missing_docs)]
 pub struct CameraDepth<'a> {
     pub depths: &'a [f32],
     pub width: i32,
@@ -16,7 +20,9 @@ pub struct CameraDepth<'a> {
     pub timestamp_ns: i64,
 }
 
+/// Owned variant returned by [`from_struct_array`].
 #[derive(Debug, Clone, PartialEq)]
+#[allow(missing_docs)]
 pub struct CameraDepthOwned {
     pub depths: Vec<f32>,
     pub width: i32,
@@ -28,6 +34,7 @@ pub struct CameraDepthOwned {
     pub timestamp_ns: i64,
 }
 
+/// Stable Arrow schema for a `CameraDepth` record batch.
 pub fn schema() -> SchemaRef {
     static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
     SCHEMA
@@ -61,6 +68,19 @@ fn list_f32(values: &[f32]) -> ListArray {
     )
 }
 
+/// Encode a `CameraDepth` frame as a single-row `RecordBatch` matching [`schema`].
+///
+/// # Example
+///
+/// ```
+/// use isaac_sim_arrow::camera::depth::{CameraDepth, to_record_batch};
+/// let depths = vec![1.5_f32; 4]; // 2x2
+/// let img = CameraDepth { depths: &depths, width: 2, height: 2,
+///     fx: 100.0, fy: 100.0, cx: 1.0, cy: 1.0, timestamp_ns: 10 };
+/// let batch = to_record_batch(&img).unwrap();
+/// assert_eq!(batch.num_rows(), 1);
+/// assert_eq!(batch.num_columns(), 8);
+/// ```
 pub fn to_record_batch(img: &CameraDepth) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(list_f32(img.depths)),
@@ -77,6 +97,8 @@ pub fn to_record_batch(img: &CameraDepth) -> Result<RecordBatch, arrow::error::A
     RecordBatch::try_new(schema(), columns)
 }
 
+/// Zero-copy variant returned by [`from_struct_array_borrowed`].
+#[allow(missing_docs)]
 pub struct CameraDepthBorrowed<'a> {
     pub depths: &'a [f32],
     pub width: i32,
@@ -88,6 +110,7 @@ pub struct CameraDepthBorrowed<'a> {
     pub timestamp_ns: i64,
 }
 
+/// Decode the first row of a `StructArray` into a zero-copy borrowed depth view.
 pub fn from_struct_array_borrowed(
     array: &StructArray,
 ) -> Result<CameraDepthBorrowed<'_>, arrow::error::ArrowError> {
@@ -152,6 +175,22 @@ pub fn from_struct_array_borrowed(
     })
 }
 
+/// Decode the first row of a `StructArray` into a heap-owned `CameraDepthOwned`.
+///
+/// # Example
+///
+/// ```
+/// use arrow::array::StructArray;
+/// use isaac_sim_arrow::camera::depth::{CameraDepth, to_record_batch, from_struct_array};
+/// let depths = vec![0.5_f32, 1.0, 1.5, 2.0];
+/// let img = CameraDepth { depths: &depths, width: 2, height: 2,
+///     fx: 100.0, fy: 100.0, cx: 1.0, cy: 1.0, timestamp_ns: 3 };
+/// let batch = to_record_batch(&img).unwrap();
+/// let array = StructArray::from(batch);
+/// let owned = from_struct_array(&array).unwrap();
+/// assert_eq!(owned.depths, depths);
+/// assert_eq!(owned.timestamp_ns, 3);
+/// ```
 pub fn from_struct_array(
     array: &StructArray,
 ) -> Result<CameraDepthOwned, arrow::error::ArrowError> {

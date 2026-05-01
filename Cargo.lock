@@ -1433,7 +1433,7 @@ dependencies = [
 
 [[package]]
 name = "carb-sys"
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "bindgen",
 ]
@@ -3503,42 +3503,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "example-dora-lidar-receiver"
-version = "5.1.0-alpha.0"
-dependencies = [
- "arrow 54.3.1",
- "dora-node-api",
- "eyre",
-]
-
-[[package]]
-name = "example-nova-carter"
-version = "5.1.0-alpha.0"
-dependencies = [
- "env_logger",
- "eyre",
- "isaac-sim-bridge",
- "isaac-sim-rerun",
- "log",
- "rerun",
-]
-
-[[package]]
-name = "example-nova-carter-dora"
-version = "5.1.0-alpha.0"
-dependencies = [
- "arrow 54.3.1",
- "bytemuck",
- "dora-node-api",
- "env_logger",
- "eyre",
- "isaac-sim-arrow",
- "isaac-sim-dora",
- "log",
- "rerun",
-]
-
-[[package]]
 name = "eyre"
 version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4776,7 +4740,7 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "isaac-sim-arrow"
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "arrow 54.3.1",
  "log",
@@ -4784,7 +4748,7 @@ dependencies = [
 
 [[package]]
 name = "isaac-sim-bridge"
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "arc-swap",
  "bytemuck",
@@ -4792,12 +4756,13 @@ dependencies = [
  "cxx-build",
  "env_logger",
  "log",
+ "parking_lot",
  "serde_json",
 ]
 
 [[package]]
 name = "isaac-sim-dora"
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "arc-swap",
  "arrow 54.3.1",
@@ -4811,7 +4776,7 @@ dependencies = [
 
 [[package]]
 name = "isaac-sim-rerun"
-version = "5.1.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "arc-swap",
  "bytemuck",
@@ -4819,6 +4784,16 @@ dependencies = [
  "isaac-sim-bridge",
  "log",
  "rerun",
+]
+
+[[package]]
+name = "isaac-sim-rs"
+version = "0.1.0"
+dependencies = [
+ "isaac-sim-arrow",
+ "isaac-sim-bridge",
+ "isaac-sim-dora",
+ "isaac-sim-rerun",
 ]
 
 [[package]]

@@ -5,8 +5,24 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Rust cdylib loaded by the omni.isaacsimrs.bridge Carb extension into the Isaac Sim host process"
-publish = false
+description = "Cxx::bridge core that forwards Isaac Sim sensor and actuator buffers into Rust callbacks."
+license-file = "../../LICENSE"
+keywords = ["isaac-sim", "robotics", "omniverse", "simulation", "cxx"]
+categories = ["science::robotics", "simulation"]
+documentation = "https://docs.rs/isaac-sim-bridge"
+homepage = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+default-target = "x86_64-unknown-linux-gnu"
+all-features = false
+no-default-features = true
+features = []
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = []
+cdylib = []
 
 [lib]
 crate-type = ["cdylib", "rlib"]

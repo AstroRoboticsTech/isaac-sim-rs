@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::OnceLock;
 
 use crate::channel::{channel_singleton, Channel};
@@ -25,6 +26,8 @@ fn channel() -> &'static Channel<Callback> {
     unsafe { &*isaac_sim_bridge_channel_odometry() }
 }
 
+/// Register a callback to receive every chassis odometry frame the bridge dispatches.
+/// The closure runs on the bridge thread; keep it bounded.
 pub fn register_odometry_consumer<F>(cb: F)
 where
     F: Fn(&str, &str, &str, &OdometryMeta) + Send + Sync + 'static,
@@ -32,6 +35,7 @@ where
     channel().register(Box::new(cb));
 }
 
+/// Fan out a single odometry frame to all registered consumers.
 pub fn dispatch_odometry(
     source_id: &str,
     chassis_frame_id: &str,
@@ -41,10 +45,12 @@ pub fn dispatch_odometry(
     channel().for_each(|cb| cb(source_id, chassis_frame_id, odom_frame_id, meta));
 }
 
+/// Number of currently registered odometry consumers.
 pub fn odometry_consumer_count() -> usize {
     channel().count()
 }
 
+/// Entry point called by the C++ bridge on each OmniGraph tick.
 pub fn forward_odometry(
     source_id: &str,
     chassis_frame_id: &str,

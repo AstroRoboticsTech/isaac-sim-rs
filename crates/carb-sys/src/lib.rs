@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Raw FFI bindings to the NVIDIA Omniverse Carbonite (Carb) SDK.
 //!
 //! Bindings are generated at build time from `<isaac-sim>/kit/dev/include/`.

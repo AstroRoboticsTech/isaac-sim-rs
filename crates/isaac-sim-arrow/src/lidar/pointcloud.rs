@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Arrow encoder and decoder for the 3D RTX LiDAR PointCloud channel.
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::{Array, ArrayRef, Float32Array, Int32Array, ListArray, StructArray};
@@ -5,6 +7,8 @@ use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
+/// Borrowed view of a single 3D LiDAR PointCloud frame, used as input to [`to_record_batch`].
+#[allow(missing_docs)]
 pub struct LidarPointCloud<'a> {
     pub points: &'a [f32],
     pub num_points: i32,
@@ -12,7 +16,10 @@ pub struct LidarPointCloud<'a> {
     pub height: i32,
 }
 
+/// Owned variant returned by [`from_struct_array`]. Holds heap-owned
+/// payload so a downstream node can keep the decoded value across the next event.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(missing_docs)]
 pub struct LidarPointCloudOwned {
     pub points: Vec<f32>,
     pub num_points: i32,
@@ -20,6 +27,7 @@ pub struct LidarPointCloudOwned {
     pub height: i32,
 }
 
+/// Stable Arrow schema for a `LidarPointCloud` record batch.
 pub fn schema() -> SchemaRef {
     static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
     SCHEMA
@@ -49,6 +57,19 @@ fn list_f32(values: &[f32]) -> ListArray {
     )
 }
 
+/// Encode a `LidarPointCloud` frame as a single-row `RecordBatch` matching [`schema`].
+/// The flat `[x, y, z, ...]` points buffer is stored as an Arrow `List<Float32>` column.
+///
+/// # Example
+///
+/// ```
+/// use isaac_sim_arrow::lidar::pointcloud::{LidarPointCloud, to_record_batch};
+/// let points = [1.0_f32, 0.0, 0.0, 0.0, 1.0, 0.0];
+/// let pc = LidarPointCloud { points: &points, num_points: 2, width: 2, height: 1 };
+/// let batch = to_record_batch(&pc).unwrap();
+/// assert_eq!(batch.num_rows(), 1);
+/// assert_eq!(batch.num_columns(), 4);
+/// ```
 pub fn to_record_batch(pc: &LidarPointCloud) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(list_f32(pc.points)),
@@ -59,6 +80,9 @@ pub fn to_record_batch(pc: &LidarPointCloud) -> Result<RecordBatch, arrow::error
     RecordBatch::try_new(schema(), columns)
 }
 
+/// Zero-copy variant returned by [`from_struct_array_borrowed`]; the
+/// `points` slice borrows directly from the Arrow buffer.
+#[allow(missing_docs)]
 pub struct LidarPointCloudBorrowed<'a> {
     pub points: &'a [f32],
     pub num_points: i32,
@@ -66,6 +90,8 @@ pub struct LidarPointCloudBorrowed<'a> {
     pub height: i32,
 }
 
+/// Decode the first row of a `StructArray` into a borrowed view (zero-copy points slice).
+/// The returned struct borrows from `array`; use [`from_struct_array`] for an owned copy.
 pub fn from_struct_array_borrowed(
     array: &StructArray,
 ) -> Result<LidarPointCloudBorrowed<'_>, arrow::error::ArrowError> {
@@ -107,6 +133,21 @@ pub fn from_struct_array_borrowed(
     })
 }
 
+/// Decode the first row of a `StructArray` into a heap-owned `LidarPointCloudOwned`.
+///
+/// # Example
+///
+/// ```
+/// use arrow::array::StructArray;
+/// use isaac_sim_arrow::lidar::pointcloud::{LidarPointCloud, to_record_batch, from_struct_array};
+/// let points = [1.0_f32, 0.0, 0.0];
+/// let pc = LidarPointCloud { points: &points, num_points: 1, width: 1, height: 1 };
+/// let batch = to_record_batch(&pc).unwrap();
+/// let array = StructArray::from(batch);
+/// let owned = from_struct_array(&array).unwrap();
+/// assert_eq!(owned.num_points, 1);
+/// assert_eq!(&owned.points, &[1.0_f32, 0.0, 0.0]);
+/// ```
 pub fn from_struct_array(
     array: &StructArray,
 ) -> Result<LidarPointCloudOwned, arrow::error::ArrowError> {

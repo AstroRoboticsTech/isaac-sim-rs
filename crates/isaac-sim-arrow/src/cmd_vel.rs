@@ -1,10 +1,14 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Arrow encoder and decoder for the cmd_vel (Twist) actuation channel.
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::{Array, ArrayRef, Float32Array, Int64Array, StructArray};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
+/// A single Twist command: three-axis linear and angular velocities plus a nanosecond timestamp.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(missing_docs)]
 pub struct CmdVel {
     pub linear_x: f32,
     pub linear_y: f32,
@@ -29,6 +33,7 @@ impl Default for CmdVel {
     }
 }
 
+/// Stable Arrow schema for a `CmdVel` record batch.
 pub fn schema() -> SchemaRef {
     static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
     SCHEMA
@@ -46,6 +51,17 @@ pub fn schema() -> SchemaRef {
         .clone()
 }
 
+/// Encode a `CmdVel` sample as a single-row `RecordBatch` matching [`schema`].
+///
+/// # Example
+///
+/// ```
+/// use isaac_sim_arrow::cmd_vel::{CmdVel, to_record_batch};
+/// let twist = CmdVel { linear_x: 0.5, angular_z: 0.2, ..CmdVel::default() };
+/// let batch = to_record_batch(&twist).unwrap();
+/// assert_eq!(batch.num_rows(), 1);
+/// assert_eq!(batch.num_columns(), 7);
+/// ```
 pub fn to_record_batch(twist: &CmdVel) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(Float32Array::from_iter_values(std::iter::once(
@@ -76,6 +92,18 @@ pub fn to_record_batch(twist: &CmdVel) -> Result<RecordBatch, arrow::error::Arro
 /// Decode a single CmdVel sample from a `StructArray` whose fields
 /// match [`schema`]. Returns the first row; errors on field mismatch
 /// or empty input. Symmetric to [`to_record_batch`].
+///
+/// # Example
+///
+/// ```
+/// use arrow::array::StructArray;
+/// use isaac_sim_arrow::cmd_vel::{CmdVel, to_record_batch, from_struct_array};
+/// let twist = CmdVel { linear_x: 1.0, angular_z: -0.5, ..CmdVel::default() };
+/// let batch = to_record_batch(&twist).unwrap();
+/// let array = StructArray::from(batch);
+/// let decoded = from_struct_array(&array).unwrap();
+/// assert_eq!(decoded, twist);
+/// ```
 pub fn from_struct_array(array: &StructArray) -> Result<CmdVel, arrow::error::ArrowError> {
     if array.is_empty() {
         return Err(arrow::error::ArrowError::InvalidArgumentError(

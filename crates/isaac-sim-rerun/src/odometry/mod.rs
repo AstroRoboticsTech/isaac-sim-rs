@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use isaac_sim_bridge::{register_odometry_consumer, Odometry, OdometryMeta};
 use rerun::{Quaternion, RecordingStream, Scalars, Transform3D};
 

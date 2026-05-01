@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Latest-wins per-output pump.
 //!
 //! Decouples the OG render thread (synchronous publisher inside

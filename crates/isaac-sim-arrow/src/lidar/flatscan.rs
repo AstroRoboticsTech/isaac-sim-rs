@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Arrow encoder and decoder for the 2D RTX LiDAR FlatScan channel.
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::{Array, ArrayRef, Float32Array, Int32Array, ListArray, StructArray, UInt8Array};
@@ -5,6 +7,8 @@ use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
+/// Borrowed view of a single 2D LiDAR FlatScan frame, used as input to [`to_record_batch`].
+#[allow(missing_docs)]
 pub struct LidarFlatScan<'a> {
     pub depths: &'a [f32],
     pub intensities: &'a [u8],
@@ -23,6 +27,7 @@ pub struct LidarFlatScan<'a> {
 /// payload so a downstream dora node can keep the decoded value across
 /// the next event without a borrow on the inbound `ArrayRef`.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(missing_docs)]
 pub struct LidarFlatScanOwned {
     pub depths: Vec<f32>,
     pub intensities: Vec<u8>,
@@ -37,6 +42,8 @@ pub struct LidarFlatScanOwned {
     pub rotation_rate: f32,
 }
 
+/// Stable Arrow schema for a `LidarFlatScan` record batch. Cached via `OnceLock`; callers
+/// that hold a `SchemaRef` across frames never pay allocation on the hot path.
 pub fn schema() -> SchemaRef {
     static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
     SCHEMA
@@ -66,6 +73,30 @@ pub fn schema() -> SchemaRef {
         .clone()
 }
 
+/// Encode a `LidarFlatScan` frame as a single-row `RecordBatch` matching [`schema`].
+/// Variable-length `depths` and `intensities` are stored as Arrow `List` columns.
+///
+/// # Example
+///
+/// ```
+/// use isaac_sim_arrow::lidar::flatscan::{LidarFlatScan, to_record_batch};
+/// let scan = LidarFlatScan {
+///     depths: &[1.0, 2.0, 3.0],
+///     intensities: &[50, 100, 200],
+///     horizontal_fov: 270.0,
+///     horizontal_resolution: 0.5,
+///     azimuth_min: -135.0,
+///     azimuth_max: 135.0,
+///     depth_min: 0.1,
+///     depth_max: 30.0,
+///     num_rows: 1,
+///     num_cols: 3,
+///     rotation_rate: 10.0,
+/// };
+/// let batch = to_record_batch(&scan).unwrap();
+/// assert_eq!(batch.num_rows(), 1);
+/// assert_eq!(batch.num_columns(), 11);
+/// ```
 pub fn to_record_batch(scan: &LidarFlatScan) -> Result<RecordBatch, arrow::error::ArrowError> {
     let depths_inner = Float32Array::from_iter_values(scan.depths.iter().copied());
     let depths_offsets = OffsetBuffer::from_lengths([scan.depths.len()]);
@@ -116,6 +147,33 @@ pub fn to_record_batch(scan: &LidarFlatScan) -> Result<RecordBatch, arrow::error
     RecordBatch::try_new(schema(), columns)
 }
 
+/// Decode the first row of a `StructArray` (produced by `StructArray::from(batch)`) back
+/// into a heap-owned `LidarFlatScanOwned`. Errors on field type mismatch or empty input.
+///
+/// # Example
+///
+/// ```
+/// use arrow::array::StructArray;
+/// use isaac_sim_arrow::lidar::flatscan::{LidarFlatScan, to_record_batch, from_struct_array};
+/// let scan = LidarFlatScan {
+///     depths: &[1.0, 2.0],
+///     intensities: &[10, 20],
+///     horizontal_fov: 180.0,
+///     horizontal_resolution: 1.0,
+///     azimuth_min: -90.0,
+///     azimuth_max: 90.0,
+///     depth_min: 0.1,
+///     depth_max: 10.0,
+///     num_rows: 1,
+///     num_cols: 2,
+///     rotation_rate: 10.0,
+/// };
+/// let batch = to_record_batch(&scan).unwrap();
+/// let array = StructArray::from(batch);
+/// let owned = from_struct_array(&array).unwrap();
+/// assert_eq!(owned.depths, &[1.0_f32, 2.0]);
+/// assert_eq!(owned.horizontal_fov, 180.0);
+/// ```
 pub fn from_struct_array(
     array: &StructArray,
 ) -> Result<LidarFlatScanOwned, arrow::error::ArrowError> {

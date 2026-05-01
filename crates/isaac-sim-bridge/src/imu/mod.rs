@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::OnceLock;
 
 use crate::channel::{channel_singleton, Channel};
@@ -25,6 +26,8 @@ fn channel() -> &'static Channel<Callback> {
     unsafe { &*isaac_sim_bridge_channel_imu() }
 }
 
+/// Register a callback to receive every IMU frame the bridge dispatches.
+/// The closure runs on the bridge thread; keep it bounded.
 pub fn register_imu_consumer<F>(cb: F)
 where
     F: Fn(&str, &str, &ImuMeta) + Send + Sync + 'static,
@@ -32,14 +35,17 @@ where
     channel().register(Box::new(cb));
 }
 
+/// Fan out a single IMU frame to all registered consumers.
 pub fn dispatch_imu(source_id: &str, frame_id: &str, meta: &ImuMeta) {
     channel().for_each(|cb| cb(source_id, frame_id, meta));
 }
 
+/// Number of currently registered IMU consumers.
 pub fn imu_consumer_count() -> usize {
     channel().count()
 }
 
+/// Entry point called by the C++ bridge on each OmniGraph tick.
 pub fn forward_imu(source_id: &str, frame_id: &str, meta: &ImuMeta) {
     log::debug!(
         "[isaac-sim-rs] forward_imu: source='{}' frame='{}' lin_acc=[{:.3},{:.3},{:.3}] ang_vel=[{:.3},{:.3},{:.3}] q=[{:.3},{:.3},{:.3},{:.3}]",

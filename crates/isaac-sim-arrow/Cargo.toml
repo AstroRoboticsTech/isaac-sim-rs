@@ -5,8 +5,18 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Apache Arrow conversion utilities for Isaac Sim sensor data. Consumer-agnostic: any downstream (dora, rerun, file logger, custom bus) can take the resulting RecordBatch."
-publish = false
+description = "Apache Arrow schema and decoders for Isaac Sim sensor and actuator records."
+license-file = "../../LICENSE"
+keywords = ["isaac-sim", "robotics", "omniverse", "simulation", "arrow"]
+categories = ["science::robotics", "simulation"]
+documentation = "https://docs.rs/isaac-sim-arrow"
+homepage = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+default-target = "x86_64-unknown-linux-gnu"
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 arrow = { workspace = true }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use isaac_sim_bridge::{register_imu_consumer, Imu, ImuMeta};
 use rerun::{Quaternion, RecordingStream, Scalars, Transform3D};
 

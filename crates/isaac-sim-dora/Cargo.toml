@@ -5,15 +5,30 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "dora-rs adapter for the isaac-sim-rs SDK. Publishes any sensor stream from the bridge onto a dora node output as Apache Arrow record batches. LiDAR is the first sensor module; camera, IMU, articulation feedback, and others follow as the bridge exposes them."
-publish = false
+description = "Dora-rs publisher and subscriber adapter for Isaac Sim sensor pipelines."
+license-file = "../../LICENSE"
+keywords = ["isaac-sim", "robotics", "omniverse", "simulation", "dora"]
+categories = ["science::robotics", "simulation"]
+documentation = "https://docs.rs/isaac-sim-dora"
+homepage = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+default-target = "x86_64-unknown-linux-gnu"
+all-features = false
+features = []
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = []
+cdylib = []
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-isaac-sim-bridge = { path = "../isaac-sim-bridge" }
-isaac-sim-arrow = { path = "../isaac-sim-arrow" }
+isaac-sim-bridge = { path = "../isaac-sim-bridge", version = "0.1" }
+isaac-sim-arrow = { path = "../isaac-sim-arrow", version = "0.1" }
 dora-node-api = { version = "0.5", features = ["tracing"] }
 arc-swap = { workspace = true }
 arrow = { workspace = true }

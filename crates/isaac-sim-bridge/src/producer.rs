@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
@@ -36,10 +37,15 @@ impl<T> ProducerSlot<T> {
         }
     }
 
+    /// The prim path or logical id this slot was registered under.
     pub fn target_id(&self) -> &str {
         &self.target_id
     }
 
+    /// Store `value` atomically as the latest sample and notify observers.
+    /// Concurrent publishers are safe; last store wins (no ordering guarantee
+    /// between concurrent calls — callers that need ordering must coordinate
+    /// externally).
     pub fn publish(&self, value: T) {
         let arc = Arc::new(value);
         self.slot.store(Some(Arc::clone(&arc)));
@@ -48,10 +54,12 @@ impl<T> ProducerSlot<T> {
         }
     }
 
+    /// Load the most-recently published value, or `None` before the first publish.
     pub fn latest(&self) -> Option<Arc<T>> {
         self.slot.load_full()
     }
 
+    /// Reset the slot to the empty state (as if no publish had occurred).
     pub fn clear(&self) {
         self.slot.store(None);
     }
@@ -70,6 +78,8 @@ pub struct ProducerRegistry<T: 'static> {
 }
 
 impl<T: 'static> ProducerRegistry<T> {
+    /// Create a new empty registry. Designed to be called in a `static`
+    /// initialiser — hence `const fn`.
     pub const fn new() -> Self {
         Self {
             inner: OnceLock::new(),
@@ -114,6 +124,7 @@ impl<T: 'static> ProducerRegistry<T> {
         self.slots().read().get(target_id).map(Arc::clone)
     }
 
+    /// Number of distinct `target_id`s registered in this registry.
     pub fn count(&self) -> usize {
         self.slots().read().len()
     }
@@ -129,6 +140,7 @@ impl<T: 'static> ProducerRegistry<T> {
         self.observers().register(Box::new(cb));
     }
 
+    /// Number of registered observers on this registry.
     pub fn observer_count(&self) -> usize {
         self.observers().count()
     }

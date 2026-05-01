@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::OnceLock;
 
 use crate::channel::{channel_singleton, Channel};
@@ -23,6 +24,8 @@ fn channel() -> &'static Channel<Callback> {
     unsafe { &*isaac_sim_bridge_channel_camera_rgb() }
 }
 
+/// Register a callback to receive every RGB camera frame the bridge dispatches.
+/// The closure runs on the bridge thread; keep it bounded.
 pub fn register_camera_rgb_consumer<F>(cb: F)
 where
     F: Fn(&str, &[u8], &CameraRgbMeta) + Send + Sync + 'static,
@@ -30,14 +33,17 @@ where
     channel().register(Box::new(cb));
 }
 
+/// Fan out a single RGB camera frame to all registered consumers.
 pub fn dispatch_camera_rgb(source_id: &str, pixels: &[u8], meta: &CameraRgbMeta) {
     channel().for_each(|cb| cb(source_id, pixels, meta));
 }
 
+/// Number of currently registered RGB camera consumers.
 pub fn camera_rgb_consumer_count() -> usize {
     channel().count()
 }
 
+/// Entry point called by the C++ bridge on each OmniGraph tick.
 pub fn forward_camera_rgb(source_id: &str, pixels: &[u8], meta: &CameraRgbMeta) {
     log::debug!(
         "[isaac-sim-rs] forward_camera_rgb: source='{}' wxh={}x{} bytes={}",

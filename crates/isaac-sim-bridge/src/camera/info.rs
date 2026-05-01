@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::OnceLock;
 
 use crate::channel::{channel_singleton, Channel};
@@ -14,6 +15,7 @@ impl Sensor for CameraInfo {
 /// One camera-info dispatch. Bundles the matrix and distortion slices
 /// alongside the small `CameraInfoMeta` so consumer callbacks don't
 /// have to thread eight separate parameters.
+#[allow(missing_docs)]
 pub struct CameraInfoFrame<'a> {
     pub frame_id: &'a str,
     pub distortion_model: &'a str,
@@ -37,6 +39,8 @@ fn channel() -> &'static Channel<Callback> {
     unsafe { &*isaac_sim_bridge_channel_camera_info() }
 }
 
+/// Register a callback to receive every camera-info frame the bridge dispatches.
+/// The closure runs on the bridge thread; keep it bounded.
 pub fn register_camera_info_consumer<F>(cb: F)
 where
     F: Fn(&str, &CameraInfoFrame<'_>) + Send + Sync + 'static,
@@ -44,14 +48,18 @@ where
     channel().register(Box::new(cb));
 }
 
+/// Fan out a single camera-info frame to all registered consumers.
 pub fn dispatch_camera_info(source_id: &str, frame: &CameraInfoFrame<'_>) {
     channel().for_each(|cb| cb(source_id, frame));
 }
 
+/// Number of currently registered camera-info consumers.
 pub fn camera_info_consumer_count() -> usize {
     channel().count()
 }
 
+/// Entry point called by the C++ bridge on each OmniGraph tick. Bundles the
+/// matrix slices into a `CameraInfoFrame` and calls `dispatch_camera_info`.
 #[allow(clippy::too_many_arguments)]
 pub fn forward_camera_info(
     source_id: &str,

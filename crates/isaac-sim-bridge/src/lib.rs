@@ -1,3 +1,14 @@
+// SPDX-License-Identifier: MPL-2.0
+#![cfg_attr(docsrs, feature(doc_cfg))]
+//! `cxx::bridge` core for the Isaac Sim Rust SDK.
+//!
+//! Exposes a process-wide consumer registry and producer registry that
+//! adapters (dora, rerun, custom) plug into. The bridge cdylib entry points
+//! (`forward_*`, `poll_cmd_vel`) are gated behind the `cdylib` feature so
+//! the rlib path compiles on any machine without Isaac Sim installed.
+
+#![warn(missing_docs)]
+
 mod articulation;
 mod camera;
 mod channel;
@@ -41,6 +52,7 @@ pub use sensor::Sensor;
 pub use source::SourceFilter;
 
 #[allow(clippy::too_many_arguments)]
+#[allow(missing_docs)]
 #[cxx::bridge(namespace = "isaacsimrs")]
 mod ffi {
     #[derive(Clone, Copy)]
@@ -136,6 +148,7 @@ mod ffi {
         timestamp_ns: i64,
     }
 
+    #[cfg(feature = "cdylib")]
     extern "Rust" {
         fn init();
         fn double_value(x: i32) -> i32;
@@ -170,18 +183,31 @@ mod ffi {
     }
 }
 
+/// C++-compatible metadata structs shared across the cxx::bridge boundary.
+/// Fields are named after physical quantities and need no further prose.
+#[allow(missing_docs)]
 pub use ffi::{
     CameraDepthMeta, CameraInfoMeta, CameraRgbMeta, CmdVel, ImuMeta, LidarFlatScanMeta,
     LidarPointCloudMeta, OdometryMeta,
 };
 
+#[cfg(feature = "cdylib")]
 use articulation::cmd_vel::poll_cmd_vel;
+#[cfg(feature = "cdylib")]
 use camera::depth::forward_camera_depth;
+#[cfg(feature = "cdylib")]
 use camera::info::forward_camera_info;
+#[cfg(feature = "cdylib")]
 use camera::rgb::forward_camera_rgb;
+#[cfg(feature = "cdylib")]
 use demo::double_value;
+#[cfg(feature = "cdylib")]
 use imu::forward_imu;
+#[cfg(feature = "cdylib")]
 use lidar::flatscan::forward_lidar_flatscan;
+#[cfg(feature = "cdylib")]
 use lidar::pointcloud::forward_lidar_pointcloud;
+#[cfg(feature = "cdylib")]
 use lifecycle::init;
+#[cfg(feature = "cdylib")]
 use odometry::forward_odometry;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::sync::Arc;
 
 use isaac_sim_bridge::{register_lidar_pointcloud_consumer, LidarPointCloud, LidarPointCloudMeta};

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Arrow encoder and decoder for the RGB camera channel.
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::{
@@ -7,6 +9,8 @@ use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
+/// Borrowed view of a single RGB camera frame, used as input to [`to_record_batch`].
+#[allow(missing_docs)]
 pub struct CameraRgb<'a> {
     pub pixels: &'a [u8],
     pub width: i32,
@@ -18,7 +22,9 @@ pub struct CameraRgb<'a> {
     pub timestamp_ns: i64,
 }
 
+/// Owned variant returned by [`from_struct_array`].
 #[derive(Debug, Clone, PartialEq)]
+#[allow(missing_docs)]
 pub struct CameraRgbOwned {
     pub pixels: Vec<u8>,
     pub width: i32,
@@ -30,6 +36,7 @@ pub struct CameraRgbOwned {
     pub timestamp_ns: i64,
 }
 
+/// Stable Arrow schema for a `CameraRgb` record batch.
 pub fn schema() -> SchemaRef {
     static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
     SCHEMA
@@ -63,6 +70,19 @@ fn list_u8(values: &[u8]) -> ListArray {
     )
 }
 
+/// Encode a `CameraRgb` frame as a single-row `RecordBatch` matching [`schema`].
+///
+/// # Example
+///
+/// ```
+/// use isaac_sim_arrow::camera::rgb::{CameraRgb, to_record_batch};
+/// let pixels = vec![0u8; 12]; // 2x2 RGB
+/// let img = CameraRgb { pixels: &pixels, width: 2, height: 2,
+///     fx: 100.0, fy: 100.0, cx: 1.0, cy: 1.0, timestamp_ns: 1 };
+/// let batch = to_record_batch(&img).unwrap();
+/// assert_eq!(batch.num_rows(), 1);
+/// assert_eq!(batch.num_columns(), 8);
+/// ```
 pub fn to_record_batch(img: &CameraRgb) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(list_u8(img.pixels)),
@@ -79,6 +99,8 @@ pub fn to_record_batch(img: &CameraRgb) -> Result<RecordBatch, arrow::error::Arr
     RecordBatch::try_new(schema(), columns)
 }
 
+/// Zero-copy variant returned by [`from_struct_array_borrowed`].
+#[allow(missing_docs)]
 pub struct CameraRgbBorrowed<'a> {
     pub pixels: &'a [u8],
     pub width: i32,
@@ -90,6 +112,7 @@ pub struct CameraRgbBorrowed<'a> {
     pub timestamp_ns: i64,
 }
 
+/// Decode the first row of a `StructArray` into a zero-copy borrowed view.
 pub fn from_struct_array_borrowed(
     array: &StructArray,
 ) -> Result<CameraRgbBorrowed<'_>, arrow::error::ArrowError> {
@@ -125,6 +148,22 @@ pub fn from_struct_array_borrowed(
     })
 }
 
+/// Decode the first row of a `StructArray` into a heap-owned `CameraRgbOwned`.
+///
+/// # Example
+///
+/// ```
+/// use arrow::array::StructArray;
+/// use isaac_sim_arrow::camera::rgb::{CameraRgb, to_record_batch, from_struct_array};
+/// let pixels = vec![255u8; 12]; // 2x2 RGB white
+/// let img = CameraRgb { pixels: &pixels, width: 2, height: 2,
+///     fx: 100.0, fy: 100.0, cx: 1.0, cy: 1.0, timestamp_ns: 5 };
+/// let batch = to_record_batch(&img).unwrap();
+/// let array = StructArray::from(batch);
+/// let owned = from_struct_array(&array).unwrap();
+/// assert_eq!(owned.pixels.len(), 12);
+/// assert_eq!(owned.timestamp_ns, 5);
+/// ```
 pub fn from_struct_array(array: &StructArray) -> Result<CameraRgbOwned, arrow::error::ArrowError> {
     if array.is_empty() {
         return Err(arrow::error::ArrowError::InvalidArgumentError(

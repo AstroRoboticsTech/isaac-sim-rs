@@ -1,9 +1,13 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Arrow encoder and decoder for the IMU sensor channel.
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::{Array, ArrayRef, Float64Array, Int64Array, StringArray, StructArray};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
 
+/// Borrowed view of a single IMU sample, used as input to [`to_record_batch`].
+#[allow(missing_docs)]
 pub struct Imu<'a> {
     pub frame_id: &'a str,
     pub lin_acc_x: f64,
@@ -19,7 +23,9 @@ pub struct Imu<'a> {
     pub timestamp_ns: i64,
 }
 
+/// Owned variant returned by [`from_struct_array`].
 #[derive(Debug, Clone, PartialEq)]
+#[allow(missing_docs)]
 pub struct ImuOwned {
     pub frame_id: String,
     pub lin_acc_x: f64,
@@ -35,6 +41,7 @@ pub struct ImuOwned {
     pub timestamp_ns: i64,
 }
 
+/// Stable Arrow schema for an `Imu` record batch.
 pub fn schema() -> SchemaRef {
     static SCHEMA: OnceLock<SchemaRef> = OnceLock::new();
     SCHEMA
@@ -57,6 +64,23 @@ pub fn schema() -> SchemaRef {
         .clone()
 }
 
+/// Encode an `Imu` sample as a single-row `RecordBatch` matching [`schema`].
+///
+/// # Example
+///
+/// ```
+/// use isaac_sim_arrow::imu::{Imu, to_record_batch};
+/// let sample = Imu {
+///     frame_id: "imu",
+///     lin_acc_x: 0.0, lin_acc_y: 0.0, lin_acc_z: 9.81,
+///     ang_vel_x: 0.0, ang_vel_y: 0.0, ang_vel_z: 0.0,
+///     orientation_w: 1.0, orientation_x: 0.0, orientation_y: 0.0, orientation_z: 0.0,
+///     timestamp_ns: 1_000_000,
+/// };
+/// let batch = to_record_batch(&sample).unwrap();
+/// assert_eq!(batch.num_rows(), 1);
+/// assert_eq!(batch.num_columns(), 12);
+/// ```
 pub fn to_record_batch(imu: &Imu) -> Result<RecordBatch, arrow::error::ArrowError> {
     let columns: Vec<ArrayRef> = vec![
         Arc::new(StringArray::from(vec![imu.frame_id])),
@@ -97,6 +121,26 @@ pub fn to_record_batch(imu: &Imu) -> Result<RecordBatch, arrow::error::ArrowErro
     RecordBatch::try_new(schema(), columns)
 }
 
+/// Decode the first row of a `StructArray` into a heap-owned `ImuOwned`.
+///
+/// # Example
+///
+/// ```
+/// use arrow::array::StructArray;
+/// use isaac_sim_arrow::imu::{Imu, to_record_batch, from_struct_array};
+/// let sample = Imu {
+///     frame_id: "imu",
+///     lin_acc_x: 0.0, lin_acc_y: 0.0, lin_acc_z: 9.81,
+///     ang_vel_x: 0.0, ang_vel_y: 0.0, ang_vel_z: 0.0,
+///     orientation_w: 1.0, orientation_x: 0.0, orientation_y: 0.0, orientation_z: 0.0,
+///     timestamp_ns: 42,
+/// };
+/// let batch = to_record_batch(&sample).unwrap();
+/// let array = StructArray::from(batch);
+/// let owned = from_struct_array(&array).unwrap();
+/// assert_eq!(owned.frame_id, "imu");
+/// assert_eq!(owned.timestamp_ns, 42);
+/// ```
 pub fn from_struct_array(array: &StructArray) -> Result<ImuOwned, arrow::error::ArrowError> {
     if array.is_empty() {
         return Err(arrow::error::ArrowError::InvalidArgumentError(

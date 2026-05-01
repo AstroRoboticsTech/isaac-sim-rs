@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Bridge→dora cmd_vel publisher.
 //!
 //! Mirrors the sensor publisher pattern: register a consumer (here

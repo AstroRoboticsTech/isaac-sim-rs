@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Convenience decoders for downstream dora nodes that consume the
 //! sensor outputs this crate publishes.
 //!
@@ -54,34 +55,43 @@ fn cast<'a>(data: &'a ArrayRef, sensor: &str) -> Result<&'a StructArray, ArrowEr
         .ok_or_else(|| ArrowError::SchemaError(format!("{sensor} payload is not a StructArray")))
 }
 
+/// Decode an inbound dora `ArrayRef` as a `LidarFlatScan` sample. Errors if the
+/// payload is not a `StructArray` or its fields do not match the expected schema.
 pub fn lidar_flatscan(data: &ArrayRef) -> Result<LidarFlatScanOwned, ArrowError> {
     decode_lidar_flatscan(cast(data, "lidar_flatscan")?)
 }
 
+/// Decode an inbound dora `ArrayRef` as a `LidarPointCloud` sample.
 pub fn lidar_pointcloud(data: &ArrayRef) -> Result<LidarPointCloudOwned, ArrowError> {
     decode_lidar_pointcloud(cast(data, "lidar_pointcloud")?)
 }
 
+/// Decode an inbound dora `ArrayRef` as an RGB camera frame.
 pub fn camera_rgb(data: &ArrayRef) -> Result<CameraRgbOwned, ArrowError> {
     decode_camera_rgb(cast(data, "camera_rgb")?)
 }
 
+/// Decode an inbound dora `ArrayRef` as a depth camera frame.
 pub fn camera_depth(data: &ArrayRef) -> Result<CameraDepthOwned, ArrowError> {
     decode_camera_depth(cast(data, "camera_depth")?)
 }
 
+/// Decode an inbound dora `ArrayRef` as camera calibration metadata.
 pub fn camera_info(data: &ArrayRef) -> Result<CameraInfoOwned, ArrowError> {
     decode_camera_info(cast(data, "camera_info")?)
 }
 
+/// Decode an inbound dora `ArrayRef` as an IMU sample.
 pub fn imu(data: &ArrayRef) -> Result<ImuOwned, ArrowError> {
     decode_imu(cast(data, "imu")?)
 }
 
+/// Decode an inbound dora `ArrayRef` as a chassis odometry sample.
 pub fn odometry(data: &ArrayRef) -> Result<OdometryOwned, ArrowError> {
     decode_odometry(cast(data, "odometry")?)
 }
 
+/// Decode an inbound dora `ArrayRef` as a cmd_vel Twist command.
 pub fn cmd_vel(data: &ArrayRef) -> Result<CmdVel, ArrowError> {
     decode_cmd_vel(cast(data, "cmd_vel")?)
 }

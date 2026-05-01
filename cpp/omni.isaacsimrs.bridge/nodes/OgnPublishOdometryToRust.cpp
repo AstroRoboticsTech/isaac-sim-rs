@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 #include "OgnPublishOdometryToRustDatabase.h"
 #include "isaacsimrs/forward.hpp"
 #include <pxr/base/gf/quatd.h>

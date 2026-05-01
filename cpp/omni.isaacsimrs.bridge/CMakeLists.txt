@@ -5,6 +5,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(EXT_PLATFORM "linux-x86_64")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(EXT_PLATFORM "windows-x86_64")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(EXT_PLATFORM "macos-universal")
+else()
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+endif()
+
 # Each Ogn codegen step launches a headless Kit process that locks
 # packman caches and Kit shared-mem keys; running them in parallel
 # races on those locks. Pin to one job at a time.
@@ -46,6 +56,8 @@ add_custom_target(cargo_cdylibs ALL
     COMMAND ${CMAKE_COMMAND} -E env
         "CARGO_TARGET_DIR=${CARGO_TARGET_DIR}"
         cargo build --workspace --lib ${CARGO_PROFILE_FLAG}
+            --features isaac-sim-bridge/cdylib
+            --features isaac-sim-dora/cdylib
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
     BYPRODUCTS
         "${CARGO_OUTPUT_DIR}/libisaac_sim_bridge.so"
@@ -106,7 +118,7 @@ set_target_properties(omni_isaacsimrs_bridge PROPERTIES
     OUTPUT_NAME "omni.isaacsimrs.bridge.plugin"
     PREFIX "lib"
     SUFFIX ".so"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${EXT_PLATFORM}"
     BUILD_RPATH "$ORIGIN"
     INSTALL_RPATH "$ORIGIN"
     INSTALL_RPATH_USE_LINK_PATH OFF
@@ -143,7 +155,30 @@ foreach(crate isaac_sim_bridge isaac_sim_dora example_nova_carter)
     add_custom_command(TARGET omni_isaacsimrs_bridge POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CARGO_OUTPUT_DIR}/lib${crate}.so"
-            "${CMAKE_CURRENT_SOURCE_DIR}/bin/"
-        COMMENT "[isaacsimrs] copying lib${crate}.so to bin/"
+            "${CMAKE_CURRENT_SOURCE_DIR}/bin/${EXT_PLATFORM}/"
+        COMMENT "[isaacsimrs] copying lib${crate}.so to bin/${EXT_PLATFORM}/"
     )
 endforeach()
+
+install(TARGETS omni_isaacsimrs_bridge
+    LIBRARY DESTINATION "omni.isaacsimrs.bridge/bin/${EXT_PLATFORM}"
+)
+install(FILES
+    "${CARGO_OUTPUT_DIR}/libisaac_sim_bridge.so"
+    "${CARGO_OUTPUT_DIR}/libisaac_sim_dora.so"
+    DESTINATION "omni.isaacsimrs.bridge/bin/${EXT_PLATFORM}"
+)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/config/"
+    DESTINATION "omni.isaacsimrs.bridge/config"
+)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/nodes/"
+    DESTINATION "omni.isaacsimrs.bridge/nodes"
+    FILES_MATCHING PATTERN "*.ogn"
+)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs/"
+    DESTINATION "omni.isaacsimrs.bridge/docs"
+)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+    DESTINATION "omni.isaacsimrs.bridge/data"
+    FILES_MATCHING PATTERN "*.png"
+)

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 #include "OgnPublishLidarPointCloudToRustDatabase.h"
 #include "isaacsimrs/forward.hpp"
 #include <carb/logging/Log.h>

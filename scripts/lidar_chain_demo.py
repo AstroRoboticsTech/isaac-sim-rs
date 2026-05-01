@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Wires PublishLidarToRust to IsaacComputeRTXLidarFlatScan in an OmniGraph.
 
 This is the structural-only demo: with no upstream RTX render product, the

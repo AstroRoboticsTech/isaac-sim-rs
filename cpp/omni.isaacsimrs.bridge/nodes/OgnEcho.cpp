@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 #include "OgnEchoDatabase.h"
 #include "isaac-sim-bridge/src/lib.rs.h"
 

@@ -1,12 +1,25 @@
 [package]
 title = "Isaac Sim Rust Bridge"
-description = "Rust FFI host extension. Loads a Rust cdylib and exposes Carb-routed sensor and actuator pipelines to dora-rs and other downstream consumers."
-version = "5.1.0-alpha.0"
-category = "Internal"
+description = "Carb extension that bridges Isaac Sim sensor + actuator pipelines into Rust callbacks (dora-rs, rerun, custom adapters), without a Python or ROS hop in the hot path."
+version = "0.1.0"
+category = "Sensor"
 authors = ["Astro Robotics"]
 repository = "https://github.com/AstroRoboticsTech/isaac-sim-rs"
-keywords = ["isaac", "rust", "ffi", "robotics"]
+keywords = ["isaac", "rust", "ffi", "robotics", "dora", "rerun", "sensor", "bridge", "omnigraph"]
+readme = "docs/README.md"
+changelog = "docs/CHANGELOG.md"
+preview_image = "data/preview.png"
+icon = "data/icon.png"
+feature = false
+
+[dependencies]
+"omni.graph.core" = { version = ">=2.0.0" }
 
 [[native.plugin]]
-path = "bin/*.plugin"
+path = "bin/linux-x86_64/*.plugin"
 recursive = false
+
+[settings.omni.isaacsimrs.bridge]
+adapters = ["dora"]
+adapter_path = ""
+

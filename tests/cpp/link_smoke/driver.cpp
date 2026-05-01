@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Tier-(b) link smoke test: verifies the cxx::bridge ABI between the
 // C++ side and libisaac_sim_bridge.so without Kit, USD, or a GPU. If
 // this links and runs to exit 0, the cdylib's exported symbols + slice

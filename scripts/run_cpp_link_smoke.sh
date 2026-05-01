@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MPL-2.0
 # Tier-(b) link smoke: verifies the cxx::bridge ABI between C++ and
 # libisaac_sim_bridge.so without Kit, USD, or a GPU. Builds the cdylib,
 # configures the link_smoke cmake project, builds the smoke executable,

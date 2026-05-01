@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MPL-2.0
 # Tier-(c) Kit-launched smoke test for nightly cron.
 #
 # Boots Kit headlessly via the nova-carter example launcher, watches

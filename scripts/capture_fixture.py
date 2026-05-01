@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Capture a single RTX-LiDAR annotator output to a fixture pair on
 disk for replay in tier-(a) schema-conformance tests.
 

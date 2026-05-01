@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 #include "OgnPublishCameraDepthToRustDatabase.h"
 #include "isaacsimrs/forward.hpp"
 #include <carb/RenderingTypes.h>

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MPL-2.0
 # Tier-(c) Kit + dora E2E smoke test.
 #
 # Spins up the nova-carter-dora dataflow, waits for the receiver node to

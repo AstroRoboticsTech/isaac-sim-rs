@@ -41,7 +41,7 @@ The core (`isaac-sim-bridge`) has zero adapter dependencies. Adapters (`isaac-si
 - Per-sensor `OgnPublish*ToRust` nodes accept the matching NVIDIA RTX / Replicator / Isaac annotator output and forward payload + metadata to Rust via `cxx::bridge`. The reverse-direction `OgnApplyCmdVelFromRust` polls a Rust producer slot each tick and emits scalar lin/ang velocities into the Isaac differential controller.
 - `isaac-sim-bridge` exposes a thread-safe consumer registry plus a producer registry (cmd_vel): any Rust closure for a sensor can be registered and gets dispatched on every frame; any actuation source can call `register_cmd_vel_producer(target).publish(...)` and the C++ tick reads it.
 - `isaac-sim-arrow` converts every bridged sensor (LiDAR FlatScan + PointCloud, Camera RGB + Depth + Info, IMU, Odometry, cmd_vel) to an Apache Arrow `RecordBatch` with a stable schema per sensor.
-- `isaac-sim-dora` ships publisher adapters for every sensor and a bidirectional cmd_vel adapter, plus convenience subscribe decoders (`subscribe::*`) so downstream dora algorithm nodes can pull native owned structs out of inbound `ArrayRef`s without touching `arrow` directly. As a `cdylib` the bridge `dlopen`s it via `ISAAC_SIM_RS_DORA_RUNNER` so Kit becomes a dora node with no extra extension code; as an `rlib` downstream Rust crates use the helper API directly.
+- `isaac-sim-dora` ships publisher adapters for every sensor and a bidirectional cmd_vel adapter, plus convenience subscribe decoders (`subscribe::*`) so downstream dora algorithm nodes can pull native owned structs out of inbound `ArrayRef`s without touching `arrow` directly. As a `cdylib` the bridge `dlopen`s it via the `[settings.omni.isaacsimrs.bridge].adapters` list in `extension.toml`; as an `rlib` downstream Rust crates use the helper API directly.
 - `isaac-sim-rerun` wraps the same consumer registry behind a `Viewer` builder: one `with_source(SensorMarker, prim, entity_path)` call per stream, optional cross-host gRPC.
 - `examples/lidar-receiver/` ships a synthesized-input dora pipeline. `examples/nova-carter/` is the full Nova Carter showcase: 2D + 3D LiDAR, RGB + depth + camera-info, IMU, chassis odometry, plus a synthetic cmd_vel publisher driving the robot through a warehouse.
 
@@ -64,34 +64,80 @@ Every bridged sensor currently has Arrow + dora + rerun coverage. Adding a new s
 
 ## Quick start
 
+Three audiences, three paths:
+
+### Rust SDK consumer (cargo)
+
+You want to write Rust code that subscribes to Isaac Sim sensor data through dora-rs or rerun without cloning this repo or installing Isaac Sim.
+
 ```bash
-# 1. clone
+cargo add isaac-sim-rs -F dora     # dora subscriber decoders
+# or
+cargo add isaac-sim-rs -F rerun    # rerun viewer adapter
+# or
+cargo add isaac-sim-rs -F full     # both
+```
+
+Default features pull only `isaac-sim-arrow` (pure-Rust schema + decoders) — no Isaac Sim required. Adapter features (`dora`, `rerun`, `full`) pull the bridge rlib chain.
+
+Minimal example: see [`examples/lidar-receiver/`](examples/lidar-receiver/) for a working dora subscriber that decodes FlatScan batches into native structs.
+
+### Isaac Sim user (extension manager)
+
+You have Isaac Sim installed and want to plug a Rust dataflow (dora) or remote viewer (rerun) into your simulation.
+
+1. Install `omni.isaacsimrs.bridge` from the Isaac Sim extension manager (or extract the prebuilt tarball into `~/Documents/Kit/.../exts/`).
+2. Enable the extension in the extension manager UI.
+3. Edit your dataflow's adapter set (one-time):
+
+   ```toml
+   [settings.omni.isaacsimrs.bridge]
+   adapters = ["dora"]
+   ```
+
+   Override via Kit CLI without editing the file:
+
+   ```bash
+   $ISAAC_SIM/isaac-sim.sh \
+       --enable omni.isaacsimrs.bridge \
+       --/settings/omni.isaacsimrs.bridge/adapters="dora,rerun"
+   ```
+
+4. Author your OmniGraph: drop `OgnPublish*ToRust` nodes wired to NVIDIA RTX sensor sources; the extension forwards every tick into the configured adapters.
+
+See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) (coming in 0.1) for the full walkthrough.
+
+### Source build (developer setup)
+
+Clone the repo and build the C++ extension + Rust cdylibs in-tree. This path requires the NVIDIA Isaac Sim install + a C++ toolchain and pulls ~3.8 GB of USD via packman the first time.
+
+```bash
 git clone https://github.com/AstroRoboticsTech/isaac-sim-rs.git
 cd isaac-sim-rs
 
-# 2. point at your Isaac Sim install
+# point at your Isaac Sim install
 export ISAAC_SIM=/path/to/isaac-sim
 export ISAAC_SIM_RS=$(pwd)
 
-# 3. build (cmake drives cargo for every workspace cdylib via a
-#    custom target; CMake fetches USD via NVIDIA packman the first
-#    time, ~3.8 GB)
+# build (cmake drives cargo for every workspace cdylib via a
+# custom target; CMake fetches USD via NVIDIA packman the first
+# time, ~3.8 GB)
 ISAAC_SIM_PATH=$ISAAC_SIM CARGO_PROFILE=release just build
 
-# 4. run the example dora pipeline
+# run the example dora pipeline
 cd $ISAAC_SIM_RS/examples/lidar-receiver
 dora up
 dora build dataflow.yml
 dora start dataflow.yml --detach
 
-# 5. watch the receiver
+# watch the receiver
 RUN=$(dora list | awk '/Running/ {print $1}')
 dora logs $RUN receiver
 # [receiver] scan: n=360 fov=360.0° rate=10.0Hz depth=[3.000,7.000]m
 # (repeating at 10 Hz)
 ```
 
-See [`examples/lidar-receiver/README.md`](examples/lidar-receiver/README.md) for the full walkthrough.
+See [`docs/ENV_VARS.md`](docs/ENV_VARS.md) for the full env-var reference.
 
 The full set of public recipes is `just --list` (workspace tests, clippy, fmt, link-smoke, kit-smoke, clean). Per-developer cross-host helpers go in `justfile.local` (gitignored).
 
@@ -99,6 +145,7 @@ The full set of public recipes is `just --list` (workspace tests, clippy, fmt, l
 
 | Crate                                          | Purpose                                                                                                       |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| [`isaac-sim-rs`](crates/isaac-sim-rs/)         | Top-level facade. `cargo add isaac-sim-rs -F <adapter>` entry point. Default features: pure-Rust Arrow decoders only. |
 | [`carb-sys`](crates/carb-sys/)                 | Raw FFI bindings to the NVIDIA Carbonite SDK (bindgen, env-driven build)                                      |
 | [`isaac-sim-bridge`](crates/isaac-sim-bridge/) | C++ ↔ Rust bridge cdylib + consumer registry + cmd_vel producer registry. The hub everything else plugs into. |
 | [`isaac-sim-arrow`](crates/isaac-sim-arrow/)   | Apache Arrow conversion utilities for every bridged sensor + cmd_vel. Consumer-agnostic.                      |

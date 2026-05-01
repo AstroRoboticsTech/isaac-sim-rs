@@ -16,6 +16,7 @@ log = { workspace = true }
 env_logger = "0.11"
 cxx = "1"
 arc-swap = { workspace = true }
+parking_lot = { workspace = true }
 
 [build-dependencies]
 cxx-build = "1"

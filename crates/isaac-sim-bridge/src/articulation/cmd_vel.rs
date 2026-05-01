@@ -82,6 +82,9 @@ pub fn peek_cmd_vel(target_id: &str) -> Option<CmdVel> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
+
     use super::*;
 
     fn make_cmd_vel(linear_x: f32) -> CmdVel {
@@ -122,5 +125,65 @@ mod tests {
         let _slot = register_cmd_vel_producer(target);
         let mut out = CmdVel::default();
         assert!(!poll_cmd_vel(target, &mut out));
+    }
+
+    #[test]
+    fn peek_misses_until_first_publish() {
+        let target = "/test/articulation/peek_no_publish_yet";
+        let slot = register_cmd_vel_producer(target);
+        assert!(
+            peek_cmd_vel(target).is_none(),
+            "peek returns None before first publish"
+        );
+        slot.publish(make_cmd_vel(0.7));
+        let got = peek_cmd_vel(target).expect("peek returns Some after publish");
+        assert_eq!(got.linear_x, 0.7);
+    }
+
+    #[test]
+    fn two_consumers_see_correct_target_and_peek_reads_current_value() {
+        let target_a = "/test/articulation/observer_a";
+        let target_b = "/test/articulation/observer_b";
+
+        let slot_a = register_cmd_vel_producer(target_a);
+        let slot_b = register_cmd_vel_producer(target_b);
+
+        let fires_a = Arc::new(AtomicUsize::new(0));
+        let fires_b = Arc::new(AtomicUsize::new(0));
+        let peeked_a: Arc<Mutex<Option<CmdVel>>> = Arc::new(Mutex::new(None));
+        let peeked_b: Arc<Mutex<Option<CmdVel>>> = Arc::new(Mutex::new(None));
+
+        let fires_a2 = Arc::clone(&fires_a);
+        let peeked_a2 = Arc::clone(&peeked_a);
+        let ta = target_a.to_string();
+        register_cmd_vel_consumer(move |tid, _v| {
+            if tid == ta {
+                fires_a2.fetch_add(1, Ordering::SeqCst);
+                // peek must see the value just stored (store-before-notify ordering)
+                *peeked_a2.lock().unwrap() = peek_cmd_vel(&ta);
+            }
+        });
+
+        let fires_b2 = Arc::clone(&fires_b);
+        let peeked_b2 = Arc::clone(&peeked_b);
+        let tb = target_b.to_string();
+        register_cmd_vel_consumer(move |tid, _v| {
+            if tid == tb {
+                fires_b2.fetch_add(1, Ordering::SeqCst);
+                *peeked_b2.lock().unwrap() = peek_cmd_vel(&tb);
+            }
+        });
+
+        slot_a.publish(make_cmd_vel(1.0));
+        slot_b.publish(make_cmd_vel(2.0));
+
+        assert_eq!(fires_a.load(Ordering::SeqCst), 1, "consumer_a fired once");
+        assert_eq!(fires_b.load(Ordering::SeqCst), 1, "consumer_b fired once");
+
+        let pa = peeked_a.lock().unwrap().expect("consumer_a peeked Some");
+        assert_eq!(pa.linear_x, 1.0, "consumer_a saw linear_x=1.0 via peek");
+
+        let pb = peeked_b.lock().unwrap().expect("consumer_b peeked Some");
+        assert_eq!(pb.linear_x, 2.0, "consumer_b saw linear_x=2.0 via peek");
     }
 }

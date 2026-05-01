@@ -1,10 +1,12 @@
-use std::sync::{Arc, Mutex, OnceLock};
+use std::collections::HashMap;
+use std::sync::{Arc, OnceLock};
 
 use arc_swap::ArcSwapOption;
+use parking_lot::RwLock;
 
 use crate::channel::Channel;
 
-type Slots<T> = Mutex<Vec<(String, Arc<ProducerSlot<T>>)>>;
+type Slots<T> = RwLock<HashMap<String, Arc<ProducerSlot<T>>>>;
 type Observer<T> = Box<dyn Fn(&str, &T) + Send + Sync + 'static>;
 
 /// Lock-free single-slot store for a "latest-wins" producer.
@@ -26,14 +28,6 @@ pub struct ProducerSlot<T> {
 }
 
 impl<T> ProducerSlot<T> {
-    pub fn new(target_id: impl Into<String>) -> Self {
-        Self {
-            target_id: target_id.into(),
-            slot: ArcSwapOption::const_empty(),
-            observers: None,
-        }
-    }
-
     fn with_observers(target_id: impl Into<String>, observers: Arc<Channel<Observer<T>>>) -> Self {
         Self {
             target_id: target_id.into(),
@@ -48,10 +42,10 @@ impl<T> ProducerSlot<T> {
 
     pub fn publish(&self, value: T) {
         let arc = Arc::new(value);
+        self.slot.store(Some(Arc::clone(&arc)));
         if let Some(obs) = &self.observers {
             obs.for_each(|cb| cb(&self.target_id, &arc));
         }
-        self.slot.store(Some(arc));
     }
 
     pub fn latest(&self) -> Option<Arc<T>> {
@@ -84,7 +78,7 @@ impl<T: 'static> ProducerRegistry<T> {
     }
 
     fn slots(&self) -> &Slots<T> {
-        self.inner.get_or_init(|| Mutex::new(Vec::new()))
+        self.inner.get_or_init(|| RwLock::new(HashMap::new()))
     }
 
     fn observers(&self) -> &Arc<Channel<Observer<T>>> {
@@ -95,30 +89,33 @@ impl<T: 'static> ProducerRegistry<T> {
     /// the Arc'd handle so the caller can `publish` from any thread.
     pub fn register(&self, target_id: impl Into<String>) -> Arc<ProducerSlot<T>> {
         let target_id = target_id.into();
-        let mut guard = self.slots().lock().unwrap();
-        if let Some((_, slot)) = guard.iter().find(|(t, _)| t == &target_id) {
+        {
+            let guard = self.slots().read();
+            if let Some(slot) = guard.get(&target_id) {
+                return Arc::clone(slot);
+            }
+        }
+        let mut guard = self.slots().write();
+        // Re-check after acquiring write lock to avoid a race.
+        if let Some(slot) = guard.get(&target_id) {
             return Arc::clone(slot);
         }
         let slot = Arc::new(ProducerSlot::with_observers(
             target_id.clone(),
             Arc::clone(self.observers()),
         ));
-        guard.push((target_id, Arc::clone(&slot)));
+        guard.insert(target_id, Arc::clone(&slot));
         slot
     }
 
     /// Look up the producer slot for `target_id` without registering one.
     /// Used by the C++ poll path to get the latest published value.
     pub fn lookup(&self, target_id: &str) -> Option<Arc<ProducerSlot<T>>> {
-        let guard = self.slots().lock().unwrap();
-        guard
-            .iter()
-            .find(|(t, _)| t == target_id)
-            .map(|(_, s)| Arc::clone(s))
+        self.slots().read().get(target_id).map(Arc::clone)
     }
 
     pub fn count(&self) -> usize {
-        self.slots().lock().unwrap().len()
+        self.slots().read().len()
     }
 
     /// Register an observer that fires on every `publish` to any slot
@@ -149,7 +146,8 @@ mod tests {
 
     #[test]
     fn published_value_round_trips_through_slot() {
-        let slot: ProducerSlot<i32> = ProducerSlot::new("/test/standalone");
+        let reg: ProducerRegistry<i32> = ProducerRegistry::new();
+        let slot = reg.register("/test/standalone");
         assert!(slot.latest().is_none());
         slot.publish(42);
         assert_eq!(*slot.latest().expect("published"), 42);
